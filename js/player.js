@@ -34,8 +34,10 @@ export class Player {
         this.attacking = false;
         this.attackTimer = 0;
         this.attackCooldown = 0;
+        this.fireballCooldown = 0; // 火球單獨冷卻
         this.attackDirection = 1;
         this.airAttacking = false;
+        this.attackType = 'slash'; // 'slash' 或 'fireball'
         
         // 受擊相關
         this.invincible = false;
@@ -74,9 +76,11 @@ export class Player {
                 this.jump();
             }
             
-            // 攻擊
-            if (e.key.toLowerCase() === 'j' || e.key.toLowerCase() === 'k') {
-                this.attack();
+            // 攻擊 - J鍵：火球，K鍵：斬擊
+            if (e.key.toLowerCase() === 'k') {
+                this.attackSlash();
+            } else if (e.key.toLowerCase() === 'j') {
+                this.attackFireball();
             }
         });
         
@@ -99,6 +103,10 @@ export class Player {
         
         if (this.attackCooldown > 0) {
             this.attackCooldown -= deltaTime;
+        }
+        
+        if (this.fireballCooldown > 0) {
+            this.fireballCooldown -= deltaTime;
         }
         
         if (this.invincibleTimer > 0) {
@@ -142,8 +150,8 @@ export class Player {
         // 更新動畫狀態
         this.updateAnimation(deltaTime);
         
-        // 攻擊判定
-        if (this.attacking) {
+        // 攻擊判定（只處理斬擊，火球在特效中處理）
+        if (this.attacking && this.attackType === 'slash') {
             this.checkAttackHit(enemies);
         }
         
@@ -250,10 +258,12 @@ export class Player {
         }
     }
     
-    attack() {
+    // 斬擊攻擊 (K鍵)
+    attackSlash() {
         if (this.attackCooldown > 0 || this.stunned) return;
         
         this.attacking = true;
+        this.attackType = 'slash';
         this.attackTimer = CONFIG.PLAYER.ATTACK_DURATION;
         this.attackCooldown = CONFIG.PLAYER.ATTACK_COOLDOWN;
         this.attackDirection = this.direction;
@@ -265,10 +275,33 @@ export class Player {
         
         // 通知遊戲創建斬擊特效
         if (window.game && window.game.createSlashEffect) {
-            const attackBox = this.getAttackBox();
-            const centerX = attackBox.x + attackBox.width / 2;
-            const centerY = attackBox.y + attackBox.height / 2;
-            window.game.createSlashEffect(centerX, centerY, this.attackDirection);
+            const effectX = this.x + this.width / 2;
+            const effectY = this.y + this.height / 2;
+            window.game.createSlashEffect(effectX, effectY, this.attackDirection);
+        }
+    }
+    
+    // 火球攻擊 (J鍵)
+    attackFireball() {
+        if (this.fireballCooldown > 0 || this.stunned) return;
+        
+        this.attacking = true;
+        this.attackType = 'fireball';
+        this.attackTimer = 0.1; // 火球發射動作很短
+        this.fireballCooldown = 0.4; // 火球冷卻稍長
+        this.attackDirection = this.direction;
+        
+        // 通知遊戲創建火球特效
+        if (window.game && window.game.createFireballEffect) {
+            // 從玩家身體邊緣發射火球，避免穿牆
+            const startX = this.attackDirection > 0 
+                ? this.x + this.width + 5  // 玩家右側，稍微偏移避免立即碰撞
+                : this.x - 5;              // 玩家左側，稍微偏移避免立即碰撞
+            const startY = this.y + this.height / 2; // 玩家中心高度
+            
+            // 傳遞敵人列表和玩家引用供追尾和爆炸擊退使用
+            const enemies = window.game.level?.enemies || [];
+            window.game.createFireballEffect(startX, startY, this.attackDirection, enemies, this);
         }
     }
     

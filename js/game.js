@@ -6,7 +6,8 @@ import { Camera } from './camera.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
 import { AudioManager } from './audio.js';
-import { SlashEffect } from './effects.js';
+import { SlashEffect, FireballEffect } from './effects.js';
+import { Collision } from './collision.js';
 
 export class Game {
     constructor() {
@@ -98,7 +99,24 @@ export class Game {
         this.level.update(deltaTime, this.player);
         
         // 更新特效
-        this.effects.forEach(effect => effect.update(deltaTime));
+        this.effects.forEach(effect => {
+            // 火球需要平台信息進行碰撞檢測
+            if (effect instanceof FireballEffect) {
+                effect.update(deltaTime, this.level.platforms);
+                
+                // 火球敵人碰撞檢測
+                if (!effect.exploded) {
+                    this.level.enemies.forEach(enemy => {
+                        if (enemy.alive && effect.checkHit(enemy)) {
+                            effect.explode(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
+                            // 傷害在 FireballEffect.explode 中處理
+                        }
+                    });
+                }
+            } else {
+                effect.update(deltaTime);
+            }
+        });
         this.effects = this.effects.filter(effect => effect.active);
         
         // 更新相機
@@ -268,6 +286,33 @@ export class Game {
     // 創建斬擊特效
     createSlashEffect(x, y, direction) {
         const effect = new SlashEffect(x, y, direction);
+        this.effects.push(effect);
+    }
+    
+    // 創建火球特效
+    createFireballEffect(x, y, direction, enemies, player) {
+        const effect = new FireballEffect(x, y, direction, enemies, player);
+        
+        // 立即檢查初始位置是否在牆內，如果是則立即爆炸
+        const fireballBox = {
+            x: x - effect.radius,
+            y: y - effect.radius,
+            width: effect.radius * 2,
+            height: effect.radius * 2
+        };
+        
+        let hitPlatform = false;
+        this.level.platforms.forEach(platform => {
+            if (Collision.checkAABB(fireballBox, platform)) {
+                hitPlatform = true;
+            }
+        });
+        
+        if (hitPlatform) {
+            // 如果初始位置就在牆內，立即爆炸
+            effect.explode(x, y);
+        }
+        
         this.effects.push(effect);
     }
     
