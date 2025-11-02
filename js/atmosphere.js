@@ -10,14 +10,14 @@
  */
 function createParticle(areaWidth, areaHeight) {
     const type = Math.random();
-    if (type < 0.9) { // 90% 是普通灰塵
+    if (type < 0.6) { // 60% 是普通灰塵
         return {
             x: Math.random() * areaWidth,
             y: Math.random() * areaHeight,
             vx: (Math.random() - 0.5) * 10,
             vy: (Math.random() - 0.5) * 10,
             radius: Math.random() * 1.5,
-            alpha: 0.1 + Math.random() * 0.3,
+            alpha: 0.3 + Math.random() * 0.4, // 提高灰塵粒子的基礎亮度和隨機範圍
             type: 'dust'
         };
     } else { // 40% 是發光粒子
@@ -31,7 +31,12 @@ function createParticle(areaWidth, areaHeight) {
             maxAlpha: 0.2 + Math.random() * 0.3, // 降低最大亮度
             lifetime: 3 + Math.random() * 5,
             age: 0,
-            type: 'glow'
+            type: 'glow',
+            // 神秘符文相關屬性
+            isRunic: Math.random() < 0.2, // 20% 的發光粒子是符文粒子
+            grouping: false,
+            targetX: 0,
+            targetY: 0
         };
     }
 }
@@ -50,6 +55,10 @@ export class Atmosphere {
         this.fogLayerCount = 2;
         this.fogSpeed = [10, 15];
         this.fogOffset = [0, 0];
+
+        // 神秘符文事件
+        this.runicEventTimer = 10 + Math.random() * 10; // 10-20秒觸發一次
+        this.runicEventActive = false;
 
         this.init();
     }
@@ -93,7 +102,7 @@ export class Atmosphere {
         }
     }
 
-    update(deltaTime) {
+    update(deltaTime, camera) {
         // 更新粒子位置
         this.particles.forEach(p => {
             p.x += p.vx * deltaTime;
@@ -104,6 +113,17 @@ export class Atmosphere {
             if (p.x > this.levelBounds.width) p.x = 0;
             if (p.y < 0) p.y = this.levelBounds.height;
             if (p.y > this.levelBounds.height) p.y = 0;
+
+            // 符文粒子聚集邏輯
+            if (p.grouping) {
+                const dx = p.targetX - p.x;
+                const dy = p.targetY - p.y;
+                p.vx += dx * 0.01;
+                p.vy += dy * 0.01;
+                // 增加阻力，避免抖動
+                p.vx *= 0.92;
+                p.vy *= 0.92;
+            }
 
             // 更新發光粒子的生命週期
             if (p.type === 'glow') {
@@ -122,6 +142,38 @@ export class Atmosphere {
         for (let i = 0; i < this.fogLayerCount; i++) {
             this.fogOffset[i] += this.fogSpeed[i] * deltaTime;
         }
+
+        // 更新符文事件
+        if (!this.runicEventActive) {
+            this.runicEventTimer -= deltaTime;
+            if (this.runicEventTimer <= 0 && camera) {
+                this.triggerRunicEvent(camera);
+            }
+        }
+    }
+
+    triggerRunicEvent(camera) {
+        this.runicEventActive = true;
+
+        // 在鏡頭可視範圍內隨機選擇一個聚集點
+        const targetX = camera.x + this.canvasWidth * (0.2 + Math.random() * 0.6);
+        const targetY = camera.y + this.canvasHeight * (0.2 + Math.random() * 0.6);
+
+        this.particles.forEach(p => {
+            if (p.isRunic) {
+                p.grouping = true;
+                // 讓每個粒子有稍微不同的目標點，形成一小團而不是一個點
+                p.targetX = targetX + (Math.random() - 0.5) * 80;
+                p.targetY = targetY + (Math.random() - 0.5) * 80;
+            }
+        });
+
+        // 事件持續 2.5 秒後結束
+        setTimeout(() => {
+            this.particles.forEach(p => { p.grouping = false; });
+            this.runicEventTimer = 15 + Math.random() * 15; // 重置計時器
+            this.runicEventActive = false;
+        }, 2500);
     }
 
     draw(ctx, camera) {

@@ -107,7 +107,7 @@ export class Game {
         this.level.update(deltaTime, this.player);
         
         // 更新環境氛圍
-        this.atmosphere.update(deltaTime);
+        this.atmosphere.update(deltaTime, this.camera);
         
         // 更新特效
         this.effects.forEach(effect => {
