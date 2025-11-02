@@ -7,8 +7,8 @@ export const LEVEL_DATA = {
             name: '遺忘的十字路',
             // ⭐ 超大地圖範圍 - 5000 x 2400 像素
             bounds: { x: 0, y: 0, width: 5000, height: 2400 },
-            spawnPoint: { x: 200, y: 2200 },
-            // spawnPoint: { x: 500, y: 1200 }, // 上面監測點
+            // spawnPoint: { x: 200, y: 2200 },
+            spawnPoint: { x: 500, y: 1200 }, // 上面監測點
             
             platforms: [
                 // ==================== 左下角：起始區域 (x: 0-1000, y: 2000-2400) ====================
@@ -52,6 +52,7 @@ export const LEVEL_DATA = {
                 { id: 22, x: 3100, y: 2350, width: 900, height: 50, type: 'floor' },       // 地面右段
                 
                 // 深坑內部的平台
+                { id: 23.2, x: 2600, y: 2250, width: 100, height: 20, type: 'platform' },       // 坑內平台1
                 { id: 23, x: 2700, y: 2300, width: 150, height: 20, type: 'platform' },       // 坑內平台1
                 { id: 24, x: 2850, y: 2250, width: 180, height: 20, type: 'platform' },       // 坑內平台2
                 

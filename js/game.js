@@ -141,7 +141,10 @@ export class Game {
             deltaTime,
             this.level.platforms,
             this.level.enemies,
-            this.level.abilityOrbs
+            this.level.abilityOrbs,
+            this.level.experienceOrbs,
+            this.level.doors,
+            this.level.savePoints
         );
         
         // 更新關卡
