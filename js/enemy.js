@@ -70,13 +70,27 @@ export class Enemy {
     }
     
     takeDamage(damage) {
+        if (!this.alive) return; // 如果已經死亡，不再處理傷害
+
         this.health -= damage;
-        if (this.health <= 0) {
-            this.alive = false;
+        if (this.health <= 0 && this.alive) {
+            this.alive = false; // 標記為死亡，停止AI和碰撞
+
             // 通知遊戲掉落經驗值（通過回調）
             if (this.onDeath && this.willDropExp) {
                 const expAmount = CONFIG.EXPERIENCE.ENEMY_EXP[this.enemyType] || 5;
                 this.onDeath(this.x + this.width / 2, this.y + this.height / 2, expAmount);
+                this.willDropExp = false; // 確保只掉落一次
+            }
+
+            // 創建消融特效
+            if (window.game && window.game.createDissolveEffect) {
+                window.game.createDissolveEffect(this.x, this.y, this.width, this.height, this.color);
+            }
+
+            // 播放死亡音效
+            if (window.game && window.game.audio) {
+                window.game.audio.playSFX('Assets/Audio/SFX/explosion.wav');
             }
         }
     }
@@ -87,7 +101,7 @@ export class Enemy {
     }
     
     draw(ctx) {
-        if (!this.alive) return;
+        if (!this.alive) return; // 死亡後不再繪製自己
         
         ctx.fillStyle = this.color;
         ctx.fillRect(this.x, this.y, this.width, this.height);
@@ -179,6 +193,9 @@ export class ChaserEnemy extends Enemy {
             ctx.font = '20px Arial';
             ctx.fillText('!', this.x + this.width / 2 - 5, this.y - 15);
         }
+
+        // 繪製基礎色塊和血條
+        super.draw(ctx);
     }
 }
 
@@ -269,7 +286,7 @@ export class SentryEnemy extends Enemy {
             const drawY = this.y + (this.height - spriteHeight);
             
             const startX = this.x + this.width / 2;
-            const startY = drawY + spriteHeight * 0.3; // 從 Sprite 頂部向下約 35% 的位置發射，模擬眼睛位置
+            const startY = drawY + spriteHeight * 0.3; // 從 Sprite 頂部向下約 30% 的位置發射，模擬眼睛位置
             window.game.createRayEffect(startX, startY, this.lastPlayerPos.x, this.lastPlayerPos.y, window.game.player);
         }
     }
@@ -296,7 +313,7 @@ export class SentryEnemy extends Enemy {
     }
 
     draw(ctx) {
-        if (!this.alive) return;
+        if (!this.alive) return; // 死亡後不再繪製
 
         // 使用 Sprite 繪製
         if (this.spriteLoaded) {
@@ -393,7 +410,7 @@ export class RangedEnemy extends Enemy {
     }
 
     draw(ctx) {
-        super.draw(ctx);
+        if (!this.alive) return; // 死亡後不再繪製
 
         // 蓄力時顯示特效
         if (this.isCharging) {
@@ -412,5 +429,8 @@ export class RangedEnemy extends Enemy {
             ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
             ctx.fill();
         }
+
+        // 繪製基礎色塊和血條
+        super.draw(ctx);
     }
 }

@@ -982,3 +982,74 @@ export class RayEffect {
         ctx.restore();
     }
 }
+
+/**
+ * 敵人死亡消融特效
+ */
+export class DissolveEffect {
+    constructor(x, y, width, height, color) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.color = color || '#ffffff'; // 如果沒有提供顏色，預設為白色
+
+        this.lifetime = 1.0; // 特效持續時間（秒）
+        this.age = 0;
+        this.active = true;
+
+        this.particles = [];
+        this.createParticles();
+    }
+
+    createParticles() {
+        const density = Math.sqrt(this.width * this.height) / 8;
+        const numParticles = Math.floor(density * 20);
+
+        for (let i = 0; i < numParticles; i++) {
+            this.particles.push({
+                x: this.x + Math.random() * this.width,
+                y: this.y + Math.random() * this.height,
+                vx: (Math.random() - 0.5) * 30, // 輕微的水平擴散
+                vy: -Math.random() * 60 - 20,   // 主要向上漂浮
+                size: 1 + Math.random() * 2.5,
+                lifetime: 0.6 + Math.random() * 0.4,
+                age: 0,
+                alpha: 0.7 + Math.random() * 0.3
+            });
+        }
+    }
+
+    update(deltaTime) {
+        this.age += deltaTime;
+        if (this.age >= this.lifetime) {
+            this.active = false;
+        }
+
+        this.particles.forEach(p => {
+            p.age += deltaTime;
+            p.x += p.vx * deltaTime;
+            p.y += p.vy * deltaTime;
+            p.vy *= 0.98; // 向上速度逐漸減慢
+            p.alpha = Math.max(0, p.alpha - deltaTime * 1.5); // 逐漸變透明
+        });
+    }
+
+    draw(ctx) {
+        if (!this.active) return;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter'; // 混合模式，讓粒子發光
+
+        this.particles.forEach(p => {
+            if (p.age < p.lifetime) {
+                ctx.fillStyle = `rgba(255, 255, 255, ${p.alpha * 0.8})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        });
+
+        ctx.restore();
+    }
+}

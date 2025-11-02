@@ -7,7 +7,7 @@ import { Player } from './player.js';
 import { Level } from './level.js';
 import { AudioManager } from './audio.js';
 import { Atmosphere } from './atmosphere.js';
-import { SlashEffect, FireballEffect, RayEffect } from './effects.js';
+import { SlashEffect, FireballEffect, RayEffect, DissolveEffect } from './effects.js';
 import { Collision } from './collision.js';
 import { Door } from './door.js';
 import { SavePoint } from './savePoint.js';
@@ -113,36 +113,11 @@ export class Game {
             this.respawn();
         });
         
-        // 勝利畫面重新開始按鈕
-        const victoryRestartBtn = document.getElementById('victory-restart-btn');
-        if (victoryRestartBtn) {
-            victoryRestartBtn.addEventListener('click', () => {
-                this.restartGame();
-            });
-        }
-        
         // 將遊戲實例暴露給全域，讓其他模組可以調用
         window.game = this;
         
         // 開始遊戲循環
         this.gameLoop(0);
-    }
-    
-    /**
-     * 初始化可互動物件（門、存檔點）
-     */
-    initInteractables() {
-        // 創建門（示例位置，需要根據關卡設計調整）
-        this.doors = [];
-        // 例如：Boss房間門
-        // this.doors.push(new Door(800, 300, 80, 120, 'boss'));
-        
-        // 創建存檔點（示例位置，需要根據關卡設計調整）
-        this.savePoints = [];
-        // 例如：起始點附近的存檔點
-        // this.savePoints.push(new SavePoint(200, 400));
-        
-        // TODO: 從關卡數據中讀取門和存檔點的位置
     }
     
     gameLoop(currentTime) {
@@ -161,7 +136,7 @@ export class Game {
     }
     
     update(deltaTime) {
-        // 更新玩家（加入門和存檔點參數）
+        // 更新玩家
         this.player.update(
             deltaTime,
             this.level.platforms,
@@ -169,10 +144,7 @@ export class Game {
             this.level.abilityOrbs
         );
         
-        // 檢查玩家附近的可互動物件
-        this.player.checkNearbyInteractables(this.level.doors, this.level.savePoints);
-        
-        // 更新關卡（包含門和存檔點）
+        // 更新關卡
         this.level.update(deltaTime, this.player);
         
         // 更新環境氛圍
@@ -224,14 +196,11 @@ export class Game {
         // 繪製環境粒子 (在關卡和玩家之間，營造深度)
         this.atmosphere.draw(this.ctx, this.camera);
         
-        // 繪製關卡（包含門和存檔點）
+        // 繪製關卡
         this.level.draw(this.ctx);
         
         // 繪製玩家
         this.player.draw(this.ctx);
-        
-        // 繪製互動提示
-        this.drawInteractionHints();
         
         // 繪製特效（在玩家上方，確保可見）
         this.effects.forEach(effect => effect.draw(this.ctx));
@@ -241,23 +210,6 @@ export class Game {
         
         // 繪製前景霧氣 (在所有東西之上)
         this.atmosphere.drawFog(this.ctx, this.camera);
-    }
-    
-    /**
-     * 繪製互動提示
-     */
-    drawInteractionHints() {
-        const nearest = this.player.getNearestInteractable();
-        if (nearest) {
-            switch(nearest.type) {
-                case 'door':
-                    nearest.object.drawInteractionHint(this.ctx, this.player.x, this.player.y);
-                    break;
-                case 'savePoint':
-                    nearest.object.drawInteractionHint(this.ctx);
-                    break;
-            }
-        }
     }
     
     drawParallaxBackground() {
@@ -364,73 +316,6 @@ export class Game {
         document.getElementById('death-screen').classList.remove('show');
     }
     
-    showVictory() {
-        console.log('顯示勝利畫面！');
-        this.running = false; // 停止遊戲循環
-        const victoryScreen = document.getElementById('victory-screen');
-        if (victoryScreen) {
-            victoryScreen.classList.add('show');
-        }
-    }
-    
-    hideVictory() {
-        const victoryScreen = document.getElementById('victory-screen');
-        if (victoryScreen) {
-            victoryScreen.classList.remove('show');
-        }
-    }
-    
-    restartGame() {
-        console.log('開始重新開始遊戲...');
-        
-        this.hideVictory();
-        this.hideDeathScreen();
-        
-        // 重置玩家狀態（重要！）
-        PLAYER_STATE.abilities = {
-            doubleJump: false,
-            dash: false,
-            wallJump: false,
-            downSlam: false
-        };
-        PLAYER_STATE.collectedOrbs = [];
-        
-        // 清除所有特效
-        this.effects = [];
-        
-        // 重新初始化關卡
-        this.level = new Level('forgotten_crossroads');
-        
-        // 重置玩家
-        this.player = new Player(
-            this.level.data.spawnPoint.x,
-            this.level.data.spawnPoint.y
-        );
-        
-        // 重置相機
-        this.camera = new Camera(this.level.data.bounds);
-        
-        // 重置環境氛圍系統
-        this.atmosphere = new Atmosphere(
-            this.canvas.width,
-            this.canvas.height,
-            this.level.data.bounds
-        );
-        
-        // 更新 UI
-        this.updateHealthUI();
-        this.updateExpUI();
-        this.updateAreaName(this.level.data.name);
-        this.updateRegionName();
-        
-        // 重置遊戲狀態並重新啟動遊戲循環
-        this.running = true;
-        this.lastTime = 0; // 重置時間計數器
-        requestAnimationFrame((time) => this.gameLoop(time));
-        
-        console.log('遊戲已完全重新開始');
-    }
-    
     showAbilityNotification(text) {
         const notification = document.getElementById('ability-notification');
         const textElement = document.getElementById('ability-text');
@@ -492,6 +377,12 @@ export class Game {
     // 創建射線特效
     createRayEffect(startX, startY, endX, endY, player) {
         const effect = new RayEffect(startX, startY, endX, endY, player);
+        this.effects.push(effect);
+    }
+    
+    // 創建消融特效
+    createDissolveEffect(x, y, width, height, color) {
+        const effect = new DissolveEffect(x, y, width, height, color);
         this.effects.push(effect);
     }
     
