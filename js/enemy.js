@@ -8,7 +8,7 @@ import { Collision } from './collision.js';
 // 敵人基底類別
 // ========================================
 export class Enemy {
-    constructor(x, y, config) {
+    constructor(x, y, config, enemyType = 'PATROL') {
         this.x = x;
         this.y = y;
         this.width = config.WIDTH;
@@ -24,6 +24,8 @@ export class Enemy {
         this.vy = 0;
         this.grounded = false;
         this.justHit = false;
+        this.enemyType = enemyType; // 用於判斷經驗值
+        this.willDropExp = true; // 標記是否會掉落經驗值
     }
     
     update(deltaTime, platforms, player) {
@@ -70,7 +72,17 @@ export class Enemy {
         this.health -= damage;
         if (this.health <= 0) {
             this.alive = false;
+            // 通知遊戲掉落經驗值（通過回調）
+            if (this.onDeath && this.willDropExp) {
+                const expAmount = CONFIG.EXPERIENCE.ENEMY_EXP[this.enemyType] || 5;
+                this.onDeath(this.x + this.width / 2, this.y + this.height / 2, expAmount);
+            }
         }
+    }
+    
+    // 設置死亡回調
+    setDeathCallback(callback) {
+        this.onDeath = callback;
     }
     
     draw(ctx) {
@@ -96,7 +108,7 @@ export class Enemy {
 // ========================================
 export class PatrolEnemy extends Enemy {
     constructor(x, y, patrolLeft, patrolRight) {
-        super(x, y, CONFIG.ENEMY.PATROL);
+        super(x, y, CONFIG.ENEMY.PATROL, 'PATROL');
         this.patrolLeft = patrolLeft;
         this.patrolRight = patrolRight;
         this.direction = 1;
@@ -124,7 +136,7 @@ export class PatrolEnemy extends Enemy {
 // ========================================
 export class ChaserEnemy extends Enemy {
     constructor(x, y, patrolLeft, patrolRight) {
-        super(x, y, CONFIG.ENEMY.CHASER);
+        super(x, y, CONFIG.ENEMY.CHASER, 'CHASER');
         this.patrolLeft = patrolLeft;
         this.patrolRight = patrolRight;
         this.direction = 1;

@@ -90,5 +90,29 @@ export const CONFIG = {
         { speed: 0.2, color: '#a6d46aff', alpha: 1.0 },
         { speed: 0.4, color: '#5757a1ff', alpha: 0.7 },
         { speed: 0.6, color: '#ba4294ff', alpha: 0.5 }
-    ]
+    ],
+    
+    // 特效設定
+    EFFECTS: {
+        SLASH_DURATION: 0.15 // 斬擊特效持續時間（秒）
+    },
+    
+    // 經驗值設定
+    EXPERIENCE: {
+        COLOR: '#00ff88',
+        GLOW_COLOR: '#66ffaa',
+        COLLECTION_DISTANCE: 150, // 吸收距離（像素）
+        COLLECTION_SPEED: 400, // 吸收速度（像素/秒）
+        // 敵人類型對應的經驗值數量
+        ENEMY_EXP: {
+            PATROL: 5,
+            CHASER: 8
+        }
+    },
+    
+    // 玩家經驗值設定
+    PLAYER_EXP: {
+        MAX_LEVEL: 10,
+        EXP_PER_LEVEL: [0, 10, 25, 45, 70, 100, 135, 175, 220, 270] // 每級所需經驗值
+    }
 };
