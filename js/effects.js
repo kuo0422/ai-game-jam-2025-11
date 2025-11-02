@@ -13,55 +13,77 @@ export class SlashEffect {
         this.x = x;
         this.y = y;
         this.direction = direction; // 1 = 右, -1 = 左
-        this.lifetime = 0.25; // 持續時間（秒）
+        this.lifetime = 0.3; // 持續時間（秒）
         this.age = 0;
         this.active = true;
         
         // 斬擊弧線的參數
-        this.width = 100;
-        this.height = 70;
+        this.width = 150;
+        this.height = 100;
         this.startAngle = direction > 0 ? -Math.PI / 3 : 2 * Math.PI / 3;
         this.endAngle = direction > 0 ? Math.PI / 3 : 4 * Math.PI / 3;
         
-        // 多層粒子效果
+        // 粒子系統
         this.mainParticles = [];
         this.sparkParticles = [];
-        this.energyParticles = [];
+        this.distortionLayer = []; // 新增：空間裂縫/扭曲層
+        this.glints = []; // 新增：閃光粒子
+        
+        // 衝擊波
+        this.shockwave = null;
+        
         this.createParticles();
     }
     
     createParticles() {
         // 主要斬擊軌跡粒子
-        const mainCount = 15;
+        const mainCount = 15; // 減少粒子數量，使其更像拖尾而不是主體
         for (let i = 0; i < mainCount; i++) {
-            const angle = this.startAngle + (this.endAngle - this.startAngle) * (i / mainCount);
+            const progress = i / (mainCount - 1);
+            const angle = this.startAngle + (this.endAngle - this.startAngle) * progress;
             const distance = this.width * 0.5;
             const offsetX = Math.cos(angle) * distance;
             const offsetY = Math.sin(angle) * distance;
             
-            this.mainParticles.push({
-                x: this.x + offsetX,
-                y: this.y + offsetY,
-                vx: Math.cos(angle + Math.PI / 2) * (40 + Math.random() * 20) * this.direction,
-                vy: Math.sin(angle + Math.PI / 2) * (40 + Math.random() * 20),
-                size: 4 + Math.random() * 4,
-                lifetime: 0.15 + Math.random() * 0.1,
-                age: 0,
-                color: `hsl(${180 + Math.random() * 40}, 100%, ${60 + Math.random() * 20}%)`
-            });
+            // 根據在弧線上的位置，模擬透視 (中間的粒子更大)
+            const perspectiveScale = 1 + Math.sin(progress * Math.PI) * 0.4;
+
+            // 創建兩層粒子：後層和前層
+            for (let j = 0; j < 2; j++) {
+                const isFrontLayer = j === 1;
+                const layerOffset = (isFrontLayer ? 4 : -4) * perspectiveScale; // 減小層間距
+                
+                // 粒子顏色和大小根據前後層調整
+                const brightness = isFrontLayer ? 85 : 70;
+                const size = (isFrontLayer ? 4 : 2) + Math.random() * 2; // 減小粒子大小
+
+                this.mainParticles.push({
+                    x: this.x + offsetX + Math.cos(angle + Math.PI / 2) * layerOffset * this.direction,
+                    y: this.y + offsetY + Math.sin(angle + Math.PI/2) * layerOffset,
+                    prevX: this.x + offsetX,
+                    prevY: this.y + offsetY,
+                    vx: Math.cos(angle + Math.PI / 2) * (20 + Math.random() * 10) * this.direction, // 減小粒子發散速度
+                    vy: Math.sin(angle + Math.PI / 2) * (20 + Math.random() * 10),
+                    size: size * perspectiveScale,
+                    lifetime: 0.2 + Math.random() * 0.1, // 延長一點壽命
+                    age: 0,
+                    color: `hsl(220, 80%, ${brightness + Math.random() * 10}%)`, // 改為更中性的淡白色/淡藍色
+                    isFront: isFrontLayer
+                });
+            }
         }
         
-        // 火花粒子（小顆粒）
-        const sparkCount = 25;
+        // 火花粒子（小顆粒） - 大幅減少數量以降低爆炸感
+        const sparkCount = 8;
         for (let i = 0; i < sparkCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = 50 + Math.random() * 50;
+            const speed = 80 + Math.random() * 80;
             this.sparkParticles.push({
                 x: this.x + (Math.random() - 0.5) * 20,
                 y: this.y + (Math.random() - 0.5) * 20,
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                size: 1 + Math.random() * 2,
+                size: 1.5 + Math.random() * 2.5,
                 lifetime: 0.2 + Math.random() * 0.15,
                 age: 0,
                 rotation: Math.random() * Math.PI * 2,
@@ -69,19 +91,38 @@ export class SlashEffect {
             });
         }
         
-        // 能量粒子（大顆，慢速）
-        const energyCount = 8;
-        for (let i = 0; i < energyCount; i++) {
-            const angle = (Math.PI / 2) * this.direction + (Math.random() - 0.5) * Math.PI / 2;
-            this.energyParticles.push({
-                x: this.x,
-                y: this.y,
-                vx: Math.cos(angle) * 30,
-                vy: Math.sin(angle) * 30,
-                size: 6 + Math.random() * 6,
-                lifetime: 0.3 + Math.random() * 0.2,
+        // 創建衝擊波
+        this.shockwave = {
+            radius: 0,
+            maxRadius: 160, // 稍微減小衝擊波範圍
+            lifetime: 0.25,
+            age: 0
+        };
+        
+        // 創建閃光粒子
+        const glintCount = 7;
+        for (let i = 0; i < glintCount; i++) {
+            const angle = this.startAngle + (this.endAngle - this.startAngle) * Math.random();
+            const distance = this.width * 0.4 + (Math.random() - 0.5) * 20;
+            this.glints.push({
+                x: this.x + Math.cos(angle) * distance,
+                y: this.y + Math.sin(angle) * distance,
+                size: 12 + Math.random() * 15, // 減小閃光大小
+                lifetime: 0.1 + Math.random() * 0.1,
                 age: 0,
-                pulse: Math.random() * Math.PI * 2
+                rotation: Math.random() * Math.PI
+            });
+        }
+
+        // 創建空間裂縫圖層
+        const riftPointCount = 30;
+        for (let i = 0; i < riftPointCount; i++) {
+            const progress = i / (riftPointCount - 1);
+            const angle = this.startAngle + (this.endAngle - this.startAngle) * progress;
+            this.distortionLayer.push({
+                angle: angle,
+                // 裂縫寬度隨時間變化，初始為0
+                width: 0
             });
         }
     }
@@ -94,6 +135,8 @@ export class SlashEffect {
         // 更新主要粒子
         this.mainParticles.forEach(particle => {
             particle.age += deltaTime;
+            particle.prevX = particle.x;
+            particle.prevY = particle.y;
             particle.x += particle.vx * deltaTime;
             particle.y += particle.vy * deltaTime;
             particle.vx *= 0.92;
@@ -110,14 +153,23 @@ export class SlashEffect {
             particle.rotation += particle.rotationSpeed * deltaTime;
         });
         
-        // 更新能量粒子
-        this.energyParticles.forEach(particle => {
-            particle.age += deltaTime;
-            particle.x += particle.vx * deltaTime;
-            particle.y += particle.vy * deltaTime;
-            particle.vx *= 0.94;
-            particle.vy *= 0.94;
-            particle.pulse += deltaTime * 8;
+        // 更新閃光粒子
+        this.glints.forEach(glint => {
+            glint.age += deltaTime;
+        });
+        
+        // 更新衝擊波
+        if (this.shockwave && this.shockwave.age < this.shockwave.lifetime) {
+            this.shockwave.age += deltaTime;
+            this.shockwave.radius = (this.shockwave.age / this.shockwave.lifetime) * this.shockwave.maxRadius;
+        }
+
+        // 更新空間裂縫效果
+        const riftProgress = Math.min(this.age / (this.lifetime * 0.5), 1); // 裂縫快速形成
+        const riftWidth = Math.sin(riftProgress * Math.PI) * 25; // 調整裂縫寬度，使其更像一道利刃
+        this.distortionLayer.forEach((point, i) => {
+            const progressOnArc = i / (this.distortionLayer.length - 1);
+            point.width = riftWidth * Math.sin(progressOnArc * Math.PI); // 弧線中間最寬
         });
         
         // 檢查是否過期
@@ -137,93 +189,56 @@ export class SlashEffect {
         const centerX = this.x;
         const centerY = this.y;
         
-        // 外層光暈（大範圍）
-        const glowGradient = ctx.createRadialGradient(
-            centerX, centerY, 0,
-            centerX, centerY, this.width * 1.5
-        );
-        glowGradient.addColorStop(0, `rgba(100, 200, 255, ${alpha * 0.3})`);
-        glowGradient.addColorStop(0.5, `rgba(150, 220, 255, ${alpha * 0.15})`);
-        glowGradient.addColorStop(1, `rgba(200, 240, 255, 0)`);
-        ctx.fillStyle = glowGradient;
-        ctx.fillRect(centerX - this.width * 1.5, centerY - this.width * 1.5, 
-                     this.width * 3, this.width * 3);
+        // 原本的多層斬擊軌跡已被移除
         
-        // 多層斬擊軌跡
-        for (let layer = 0; layer < 3; layer++) {
-            const layerProgress = layer / 2;
-            const layerAlpha = alpha * (1 - layerProgress * 0.5);
-            const layerWidth = 8 - layer * 2;
-            const layerOffset = layer * 3;
-            
-            // 漸層顏色
-            const gradient = ctx.createLinearGradient(
-                centerX - this.width / 2 * this.direction,
-                centerY,
-                centerX + this.width / 2 * this.direction,
-                centerY
-            );
-            
-            if (layer === 0) {
-                // 最外層 - 白色光
-                gradient.addColorStop(0, `rgba(255, 255, 255, ${layerAlpha * 0.9})`);
-                gradient.addColorStop(0.3, `rgba(150, 220, 255, ${layerAlpha})`);
-                gradient.addColorStop(0.7, `rgba(100, 180, 255, ${layerAlpha})`);
-                gradient.addColorStop(1, `rgba(255, 255, 255, ${layerAlpha * 0.8})`);
-            } else if (layer === 1) {
-                // 中層 - 藍色
-                gradient.addColorStop(0, `rgba(100, 200, 255, ${layerAlpha * 0.7})`);
-                gradient.addColorStop(0.5, `rgba(50, 150, 255, ${layerAlpha})`);
-                gradient.addColorStop(1, `rgba(100, 200, 255, ${layerAlpha * 0.7})`);
-            } else {
-                // 內層 - 深藍
-                gradient.addColorStop(0, `rgba(50, 100, 200, ${layerAlpha * 0.6})`);
-                gradient.addColorStop(0.5, `rgba(30, 80, 180, ${layerAlpha})`);
-                gradient.addColorStop(1, `rgba(50, 100, 200, ${layerAlpha * 0.6})`);
-            }
-            
-            ctx.strokeStyle = gradient;
-            ctx.lineWidth = layerWidth;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            
-            ctx.beginPath();
-            const startAngle = this.startAngle + layerOffset * 0.01;
-            const endAngle = this.endAngle - layerOffset * 0.01;
-            const startX = centerX + Math.cos(startAngle) * (this.width * 0.4);
-            const startY = centerY + Math.sin(startAngle) * (this.height * 0.4);
-            const endX = centerX + Math.cos(endAngle) * (this.width * 0.4);
-            const endY = centerY + Math.sin(endAngle) * (this.height * 0.4);
-            
-            ctx.moveTo(startX, startY);
-            const controlX = centerX + (this.width * 0.6 + layerOffset) * this.direction;
-            const controlY = centerY;
-            ctx.quadraticCurveTo(controlX, controlY, endX, endY);
-            ctx.stroke();
-        }
-        
-        // 核心能量球（脈衝效果）
-        const coreSize = (12 + Math.sin(this.age * 20) * 3) * (1 - progress);
-        const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, coreSize);
-        coreGradient.addColorStop(0, `rgba(255, 255, 255, ${alpha})`);
-        coreGradient.addColorStop(0.5, `rgba(150, 220, 255, ${alpha * 0.8})`);
-        coreGradient.addColorStop(1, `rgba(100, 180, 255, 0)`);
-        ctx.fillStyle = coreGradient;
+        // 1. 繪製空間裂縫 (最底層)
+        ctx.globalCompositeOperation = 'lighter';
+        const riftAlpha = alpha * 0.8; // 提高裂縫的整體不透明度，使其成為主體
+        const riftGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, this.width * 0.8);
+        riftGradient.addColorStop(0, `rgba(255, 255, 255, ${riftAlpha * 0.8})`); // 核心更亮
+        riftGradient.addColorStop(0.4, `rgba(220, 230, 255, ${riftAlpha * 0.5})`); // 中間改為更亮的淡藍色光暈
+        riftGradient.addColorStop(1, `rgba(180, 200, 255, 0)`); // 外圍完全透明
+
         ctx.beginPath();
-        ctx.arc(centerX, centerY, coreSize, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // 繪製主要粒子（彩色拖尾）
-        this.mainParticles.forEach(particle => {
-            if (particle.age < particle.lifetime) {
-                const pProgress = particle.age / particle.lifetime;
-                const pAlpha = (1 - pProgress) * alpha;
-                ctx.fillStyle = particle.color.replace(')', `, ${pAlpha})`).replace('hsl', 'hsla');
-                ctx.beginPath();
-                ctx.arc(particle.x, particle.y, particle.size * (1 - pProgress * 0.5), 0, Math.PI * 2);
-                ctx.fill();
-            }
+        this.distortionLayer.forEach((point, i) => {
+            const x1 = centerX + Math.cos(point.angle) * (this.width * 0.5 - point.width / 2);
+            const y1 = centerY + Math.sin(point.angle) * (this.height * 0.5 - point.width / 2);
+            if (i === 0) ctx.moveTo(x1, y1);
+            else ctx.lineTo(x1, y1);
         });
+        // 繪製另一邊
+        [...this.distortionLayer].reverse().forEach((point, i) => {
+            const x2 = centerX + Math.cos(point.angle) * (this.width * 0.5 + point.width / 2);
+            const y2 = centerY + Math.sin(point.angle) * (this.height * 0.5 + point.width / 2);
+            ctx.lineTo(x2, y2);
+        });
+        ctx.closePath();
+        ctx.fillStyle = riftGradient;
+        ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+
+
+        // 繪製主要粒子（彩色拖尾）
+        // 分兩次繪製，先畫後層，再畫前層
+        for (let layer = 0; layer < 2; layer++) {
+            this.mainParticles.forEach(particle => {
+                if ((layer === 0 && !particle.isFront) || (layer === 1 && particle.isFront)) {
+                    if (particle.age < particle.lifetime) {
+                        const pProgress = particle.age / particle.lifetime;
+                        const pAlpha = (1 - pProgress) * alpha * (particle.isFront ? 0.5 : 0.2); // 進一步降低粒子不透明度，使其更像殘影
+                        const size = particle.size * (1 - pProgress * 0.5);
+                        
+                        ctx.strokeStyle = particle.color.replace(')', `, ${pAlpha})`).replace('hsl', 'hsla');
+                        ctx.lineWidth = size;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(particle.prevX, particle.prevY);
+                        ctx.lineTo(particle.x, particle.y);
+                        ctx.stroke();
+                    }
+                }
+            });
+        }
         
         // 繪製火花粒子（星星形狀）
         this.sparkParticles.forEach(particle => {
@@ -250,27 +265,48 @@ export class SlashEffect {
             }
         });
         
-        // 繪製能量粒子（脈衝球）
-        this.energyParticles.forEach(particle => {
-            if (particle.age < particle.lifetime) {
-                const pProgress = particle.age / particle.lifetime;
-                const pAlpha = (1 - pProgress) * alpha;
-                const pulseSize = particle.size * (1 + Math.sin(particle.pulse) * 0.3);
+        // 繪製閃光粒子
+        this.glints.forEach(glint => {
+            if (glint.age < glint.lifetime) {
+                const pProgress = glint.age / glint.lifetime;
+                const pAlpha = Math.sin(pProgress * Math.PI) * alpha; // 淡入淡出
                 
-                const pGradient = ctx.createRadialGradient(
-                    particle.x, particle.y, 0,
-                    particle.x, particle.y, pulseSize
-                );
-                pGradient.addColorStop(0, `rgba(200, 240, 255, ${pAlpha})`);
-                pGradient.addColorStop(0.7, `rgba(100, 180, 255, ${pAlpha * 0.6})`);
-                pGradient.addColorStop(1, `rgba(50, 120, 200, 0)`);
+                ctx.save();
+                ctx.translate(glint.x, glint.y);
+                ctx.rotate(glint.rotation);
                 
-                ctx.fillStyle = pGradient;
-                ctx.beginPath();
-                ctx.arc(particle.x, particle.y, pulseSize, 0, Math.PI * 2);
-                ctx.fill();
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, glint.size);
+                gradient.addColorStop(0, `rgba(255, 255, 255, ${pAlpha})`);
+                gradient.addColorStop(0.3, `rgba(230, 240, 255, ${pAlpha * 0.7})`); // 閃光顏色改為更冷的淡藍色
+                gradient.addColorStop(1, `rgba(200, 230, 255, 0)`);
+                
+                ctx.fillStyle = gradient;
+                
+                // 繪製十字星光
+                ctx.fillRect(-glint.size, -glint.size * 0.1, glint.size * 2, glint.size * 0.2);
+                ctx.fillRect(-glint.size * 0.1, -glint.size, glint.size * 0.2, glint.size * 2);
+                
+                ctx.restore();
             }
         });
+        
+        // 繪製衝擊波
+        if (this.shockwave && this.shockwave.age < this.shockwave.lifetime) {
+            const shockProgress = this.shockwave.age / this.shockwave.lifetime;
+            const shockAlpha = (1 - shockProgress) * alpha * 0.8;
+            
+            ctx.strokeStyle = `rgba(255, 255, 255, ${shockAlpha * 0.7})`; // 降低衝擊波不透明度
+            ctx.lineWidth = 2 * (1 - shockProgress); // 讓線條更細
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, this.shockwave.radius, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.strokeStyle = `rgba(255, 255, 255, ${shockAlpha * 0.3})`; // 第二層衝擊波更透明
+            ctx.lineWidth = 4 * (1 - shockProgress); // 第二層線條也變細
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, this.shockwave.radius * 0.7, 0, Math.PI * 2);
+            ctx.stroke();
+        }
         
         ctx.restore();
     }
@@ -831,4 +867,3 @@ export class FireballEffect {
         return distance < this.radius + Math.max(enemy.width, enemy.height) / 2;
     }
 }
-

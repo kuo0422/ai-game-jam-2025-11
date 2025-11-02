@@ -275,10 +275,9 @@ export class Player {
         
         // 通知遊戲創建斬擊特效
         if (window.game && window.game.createSlashEffect) {
-            const attackBox = this.getAttackBox();
-            const centerX = attackBox.x + attackBox.width / 2;
-            const centerY = attackBox.y + attackBox.height / 2;
-            window.game.createSlashEffect(centerX, centerY, this.attackDirection);
+            const effectX = this.x + this.width / 2;
+            const effectY = this.y + this.height / 2;
+            window.game.createSlashEffect(effectX, effectY, this.attackDirection);
         }
     }
     
