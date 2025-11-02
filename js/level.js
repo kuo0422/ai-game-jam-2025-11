@@ -8,6 +8,8 @@ import { PatrolEnemy, ChaserEnemy, SentryEnemy } from './enemy.js';
 import { AbilityOrb } from './abilityOrb.js';
 import { ExperienceOrb } from './experience.js';
 import { PlatformRenderer } from './platformRenderer.js';
+import { Door } from './door.js';
+import { SavePoint } from './savePoint.js';
 
 export class Level {
     constructor(areaKey) {
@@ -16,12 +18,14 @@ export class Level {
         this.platforms = this.data.platforms;
         this.enemies = [];
         this.abilityOrbs = [];
-        this.benches = this.data.benches || [];
-        this.doors = this.data.doors || [];
+        this.doors = [];
+        this.savePoints = [];
         this.experienceOrbs = [];
         
         this.loadEnemies();
         this.loadAbilityOrbs();
+        this.loadDoors();
+        this.loadSavePoints();
     }
     
     // 設置敵人死亡回調（由遊戲類別調用）
@@ -76,9 +80,51 @@ export class Level {
         });
     }
     
+    /**
+     * 載入門
+     */
+    loadDoors() {
+        if (!this.data.doors) return;
+        
+        this.data.doors.forEach(doorData => {
+            const door = new Door(
+                doorData.x,
+                doorData.y,
+                doorData.width,
+                doorData.height,
+                'boss' // 類型
+            );
+            door.locked = doorData.locked !== undefined ? doorData.locked : true;
+            door.requiredAbility = doorData.requiredAbility;
+            door.name = doorData.name;
+            this.doors.push(door);
+        });
+    }
+    
+    /**
+     * 載入存檔點（benches）
+     */
+    loadSavePoints() {
+        if (!this.data.benches) return;
+        
+        this.data.benches.forEach(benchData => {
+            // 將 bench 的位置轉換為存檔點的中心位置
+            const savePoint = new SavePoint(
+                benchData.x + benchData.width / 2,
+                benchData.y + benchData.height / 2
+            );
+            savePoint.name = benchData.name;
+            this.savePoints.push(savePoint);
+        });
+    }
+    
     update(deltaTime, player) {
         this.enemies.forEach(enemy => enemy.update(deltaTime, this.platforms, player));
         this.abilityOrbs.forEach(orb => orb.update(deltaTime));
+        
+        // 更新門和存檔點
+        this.doors.forEach(door => door.update(deltaTime));
+        this.savePoints.forEach(savePoint => savePoint.update(deltaTime));
         
         // 更新經驗值掉落物
         const playerCenterX = player.x + player.width / 2;
@@ -97,58 +143,6 @@ export class Level {
         
         // 移除已收集的經驗值
         this.experienceOrbs = this.experienceOrbs.filter(orb => !orb.collected);
-
-        // 檢查玩家是否靠近存檔點
-        this.checkBenchInteraction(player);
-        
-        // 檢查玩家是否靠近 Boss 門
-        this.checkDoorInteraction(player);
-    }
-    
-    checkBenchInteraction(player) {
-        this.benches.forEach(bench => {
-            const distance = Math.sqrt(
-                Math.pow(player.x + player.width / 2 - (bench.x + bench.width / 2), 2) +
-                Math.pow(player.y + player.height / 2 - (bench.y + bench.height / 2), 2)
-            );
-            
-            // 如果玩家靠近存檔點（100 像素內）
-            if (distance < 100) {
-                bench.nearby = true;
-                
-                // 按 E 鍵互動（後續實作）
-                // if (player.keys['e'] && !bench.activated) {
-                //     bench.activated = true;
-                //     player.heal(); // 恢復血量
-                // }
-            } else {
-                bench.nearby = false;
-            }
-        });
-    }
-    
-    checkDoorInteraction(player) {
-        this.doors.forEach(door => {
-            const distance = Math.sqrt(
-                Math.pow(player.x + player.width / 2 - (door.x + door.width / 2), 2) +
-                Math.pow(player.y + player.height / 2 - (door.y + door.height / 2), 2)
-            );
-            
-            // 如果玩家靠近門（150 像素內）
-            if (distance < 150) {
-                door.nearby = true;
-                
-                // 檢查是否滿足開門條件
-                if (door.locked && door.requiredAbility) {
-                    door.canOpen = PLAYER_STATE.abilities[door.requiredAbility];
-                } else {
-                    door.canOpen = !door.locked;
-                }
-            } else {
-                door.nearby = false;
-            }
-        });
-       
     }
     
     draw(ctx) {
@@ -177,62 +171,11 @@ export class Level {
             }
         });
         
-        // 繪製存檔點（長椅）
-        this.benches.forEach(bench => {
-            // 長椅本體
-            ctx.fillStyle = bench.activated ? '#8b4513' : '#654321';
-            ctx.fillRect(bench.x, bench.y, bench.width, bench.height);
-            
-            // 長椅輪廓
-            ctx.strokeStyle = '#3e2723';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(bench.x, bench.y, bench.width, bench.height);
-            
-            // 如果玩家靠近，顯示提示
-            if (bench.nearby) {
-                ctx.fillStyle = '#fff';
-                ctx.font = '16px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('按 E 休息', bench.x + bench.width / 2, bench.y - 10);
-            }
-        });
+        // 繪製門
+        this.doors.forEach(door => door.draw(ctx));
         
-        // 繪製 Boss 門
-        this.doors.forEach(door => {
-            // 門本體
-            if (door.locked) {
-                ctx.fillStyle = door.canOpen ? '#ffd700' : '#666';
-            } else {
-                ctx.fillStyle = '#4a4a4a';
-            }
-            ctx.fillRect(door.x, door.y, door.width, door.height);
-            
-            // 門框
-            ctx.strokeStyle = door.locked ? '#ff6b6b' : '#888';
-            ctx.lineWidth = 4;
-            ctx.strokeRect(door.x, door.y, door.width, door.height);
-            
-            // 鎖的符號
-            if (door.locked) {
-                ctx.fillStyle = door.canOpen ? '#ffd700' : '#ff6b6b';
-                ctx.font = 'bold 40px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText('🔒', door.x + door.width / 2, door.y + door.height / 2 + 15);
-            }
-            
-            // 如果玩家靠近，顯示提示
-            if (door.nearby) {
-                ctx.fillStyle = '#fff';
-                ctx.font = '14px Arial';
-                ctx.textAlign = 'center';
-                
-                if (door.locked && !door.canOpen) {
-                    ctx.fillText(door.description || '需要特殊能力', door.x + door.width / 2, door.y - 20);
-                } else if (door.canOpen) {
-                    ctx.fillText('按 E 開啟', door.x + door.width / 2, door.y - 20);
-                }
-            }
-        });
+        // 繪製存檔點
+        this.savePoints.forEach(savePoint => savePoint.draw(ctx));
         
         // 繪製敵人
         this.enemies.forEach(enemy => enemy.draw(ctx));
@@ -244,3 +187,4 @@ export class Level {
         this.abilityOrbs.forEach(orb => orb.draw(ctx));
     }
 }
+

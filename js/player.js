@@ -49,6 +49,10 @@ export class Player {
         // 輸入
         this.keys = {};
         
+        // 互動系統
+        this.nearbyInteractables = []; // 附近可互動的物件
+        this.interactionRange = 80; // 互動範圍
+        
         // Sprite 系統
         this.spriteManager = new SpriteManager(
             'Assets/Characters/Player/metadata.json',
@@ -82,6 +86,11 @@ export class Player {
                 this.attackSlash();
             } else if (e.key.toLowerCase() === 'j') {
                 this.attackFireball();
+            }
+            
+            // 互動 - E鍵
+            if (e.key.toLowerCase() === 'e') {
+                this.interact();
             }
         });
         
@@ -167,7 +176,7 @@ export class Player {
             this.checkAttackHit(enemies);
         }
         
-        // 檢查能力球收集
+        // 檢查能力球收集（自動收集）
         this.checkAbilityOrbs(abilityOrbs);
         
         // 經驗值收集在 level.js 中處理（更高效）
@@ -410,6 +419,8 @@ export class Player {
     }
     
     checkAbilityOrbs(orbs) {
+        if (!orbs) return;
+        
         orbs.forEach(orb => {
             if (orb.collected) return;
             
@@ -513,6 +524,86 @@ export class Player {
                 }
             }
         });
+    }
+    
+    /**
+     * 檢查附近可互動的物件（門、存檔點等）
+     */
+    checkNearbyInteractables(doors, savePoints) {
+        this.nearbyInteractables = [];
+        
+        // 檢查門
+        if (doors) {
+            doors.forEach(door => {
+                if (!door.opened) {
+                    const dx = door.x + door.width / 2 - (this.x + this.width / 2);
+                    const dy = door.y + door.height / 2 - (this.y + this.height / 2);
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.interactionRange) {
+                        this.nearbyInteractables.push({
+                            type: 'door',
+                            object: door,
+                            distance: distance
+                        });
+                    }
+                }
+            });
+        }
+        
+        // 檢查存檔點
+        if (savePoints) {
+            savePoints.forEach(savePoint => {
+                const dx = savePoint.x - (this.x + this.width / 2);
+                const dy = savePoint.y - (this.y + this.height / 2);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < this.interactionRange) {
+                    this.nearbyInteractables.push({
+                        type: 'savePoint',
+                        object: savePoint,
+                        distance: distance
+                    });
+                }
+            });
+        }
+        
+        // 排序：最近的在前面
+        this.nearbyInteractables.sort((a, b) => a.distance - b.distance);
+    }
+    
+    /**
+     * 執行互動動作（按 E 鍵觸發）
+     */
+    interact() {
+        if (this.nearbyInteractables.length === 0) return;
+        
+        // 與最近的可互動物件互動
+        const nearest = this.nearbyInteractables[0];
+        
+        switch(nearest.type) {
+            case 'door':
+                // 開門邏輯
+                if (nearest.object.open) {
+                    nearest.object.open();
+                    console.log('門已開啟！');
+                }
+                break;
+            case 'savePoint':
+                // 存檔邏輯
+                if (nearest.object.activate) {
+                    nearest.object.activate();
+                    console.log('遊戲已存檔！');
+                }
+                break;
+        }
+    }
+    
+    /**
+     * 獲取最近的可互動物件（用於顯示提示）
+     */
+    getNearestInteractable() {
+        return this.nearbyInteractables.length > 0 ? this.nearbyInteractables[0] : null;
     }
     
     draw(ctx) {
