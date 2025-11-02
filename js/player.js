@@ -294,15 +294,15 @@ export class Player {
         
         // 通知遊戲創建火球特效
         if (window.game && window.game.createFireballEffect) {
-            const attackBox = this.getAttackBox();
+            // 從玩家身體邊緣發射火球，避免穿牆
             const startX = this.attackDirection > 0 
-                ? attackBox.x + attackBox.width 
-                : attackBox.x;
-            const startY = attackBox.y + attackBox.height / 2;
+                ? this.x + this.width + 5  // 玩家右側，稍微偏移避免立即碰撞
+                : this.x - 5;              // 玩家左側，稍微偏移避免立即碰撞
+            const startY = this.y + this.height / 2; // 玩家中心高度
             
-            // 傳遞敵人列表供追尾使用
+            // 傳遞敵人列表和玩家引用供追尾和爆炸擊退使用
             const enemies = window.game.level?.enemies || [];
-            window.game.createFireballEffect(startX, startY, this.attackDirection, enemies);
+            window.game.createFireballEffect(startX, startY, this.attackDirection, enemies, this);
         }
     }
     

@@ -280,7 +280,7 @@ export class SlashEffect {
  * 火球特效 (J鍵) - 帶有追尾、粒子軌跡和爆炸效果
  */
 export class FireballEffect {
-    constructor(x, y, direction, targetEnemies = []) {
+    constructor(x, y, direction, targetEnemies = [], player = null) {
         this.startX = x;
         this.startY = y;
         this.x = x;
@@ -289,6 +289,7 @@ export class FireballEffect {
         this.targetEnemies = targetEnemies;
         this.target = null;
         this.active = true;
+        this.player = player; // 玩家引用，用於爆炸擊退
         
         // 火球基本屬性
         this.radius = 12;
@@ -415,7 +416,7 @@ export class FireballEffect {
             }
         }
         
-        // 檢查平台碰撞
+        // 檢查平台碰撞（在移動前就檢查，避免穿牆）
         const fireballBox = {
             x: targetX - this.radius,
             y: targetY - this.radius,
@@ -431,8 +432,23 @@ export class FireballEffect {
         });
         
         if (hitPlatform) {
-            // 碰撞到平台，爆炸
-            this.explode(targetX, targetY);
+            // 碰撞到平台，在碰撞點爆炸
+            // 計算實際碰撞位置（火球中心應該在平台邊緣）
+            const fireballCenterX = targetX;
+            const fireballCenterY = targetY;
+            
+            // 找到最近的碰撞邊緣
+            let explodeX = fireballCenterX;
+            let explodeY = fireballCenterY;
+            
+            // 簡單處理：如果火球會撞到牆，在當前位置前一點就爆炸
+            if (this.direction > 0) {
+                explodeX = this.x; // 使用當前x而不是targetX
+            } else {
+                explodeX = this.x;
+            }
+            
+            this.explode(explodeX, explodeY);
             return;
         }
         
@@ -565,6 +581,36 @@ export class FireballEffect {
                 }
             }
         });
+        
+        // 檢查是否擊中玩家（彈飛效果）
+        if (this.player && this.player.alive) {
+            const playerCenterX = this.player.x + this.player.width / 2;
+            const playerCenterY = this.player.y + this.player.height / 2;
+            
+            const dx = playerCenterX - x;
+            const dy = playerCenterY - y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < explosionRadius) {
+                // 計算擊退方向（從爆炸中心指向玩家）
+                const knockbackForce = 12; // 擊退力度
+                const knockbackDirX = dx / distance;
+                const knockbackDirY = dy / distance;
+                
+                // 根據距離調整力度（越近擊退越強）
+                const distanceFactor = 1 - (distance / explosionRadius) * 0.5;
+                const finalForce = knockbackForce * distanceFactor;
+                
+                // 施加擊退
+                this.player.vx += knockbackDirX * finalForce;
+                this.player.vy += knockbackDirY * finalForce * 0.8; // 垂直方向稍弱
+                
+                // 造成傷害（如果玩家不是無敵狀態）
+                if (!this.player.invincible) {
+                    this.player.takeDamage(1, x);
+                }
+            }
+        }
     }
     
     draw(ctx) {

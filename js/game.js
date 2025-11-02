@@ -7,6 +7,7 @@ import { Player } from './player.js';
 import { Level } from './level.js';
 import { AudioManager } from './audio.js';
 import { SlashEffect, FireballEffect } from './effects.js';
+import { Collision } from './collision.js';
 
 export class Game {
     constructor() {
@@ -246,8 +247,29 @@ export class Game {
     }
     
     // 創建火球特效
-    createFireballEffect(x, y, direction, enemies) {
-        const effect = new FireballEffect(x, y, direction, enemies);
+    createFireballEffect(x, y, direction, enemies, player) {
+        const effect = new FireballEffect(x, y, direction, enemies, player);
+        
+        // 立即檢查初始位置是否在牆內，如果是則立即爆炸
+        const fireballBox = {
+            x: x - effect.radius,
+            y: y - effect.radius,
+            width: effect.radius * 2,
+            height: effect.radius * 2
+        };
+        
+        let hitPlatform = false;
+        this.level.platforms.forEach(platform => {
+            if (Collision.checkAABB(fireballBox, platform)) {
+                hitPlatform = true;
+            }
+        });
+        
+        if (hitPlatform) {
+            // 如果初始位置就在牆內，立即爆炸
+            effect.explode(x, y);
+        }
+        
         this.effects.push(effect);
     }
     
