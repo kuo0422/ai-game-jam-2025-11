@@ -22,7 +22,7 @@ export class Game {
     
     init() {
         // 載入關卡
-        this.level = new Level('start');
+        this.level = new Level('forgotten_crossroads');
         
         // 創建玩家
         this.player = new Player(
@@ -36,6 +36,7 @@ export class Game {
         // 設定 UI
         this.updateHealthUI();
         this.updateAreaName(this.level.data.name);
+        this.updateRegionName(); // 新增：顯示當前區域
         
         // 重試按鈕
         document.getElementById('retry-btn').addEventListener('click', () => {
@@ -82,6 +83,9 @@ export class Game {
             this.canvas.width,
             this.canvas.height
         );
+        
+        // 更新區域名稱（根據玩家位置）
+        this.updateRegionName();
     }
     
     draw() {
@@ -148,6 +152,22 @@ export class Game {
     
     updateAreaName(name) {
         document.getElementById('area-name').textContent = name;
+    }
+    
+    updateRegionName() {
+        // 根據玩家位置判斷在哪個區域
+        if (!this.level.data.regions) return;
+        
+        const playerX = this.player.x + this.player.width / 2;
+        const playerY = this.player.y + this.player.height / 2;
+        
+        for (const region of this.level.data.regions) {
+            if (playerX >= region.x && playerX <= region.x + region.width &&
+                playerY >= region.y && playerY <= region.y + region.height) {
+                document.getElementById('area-name').textContent = region.name;
+                return;
+            }
+        }
     }
     
     showDeathScreen() {
