@@ -229,7 +229,7 @@ export const LEVEL_DATA = {
             // 能力球配置
             // ========================================
             abilityOrbs: [
-                { type: 'doubleJump', x: 1780, y: 1560, collected: false }
+                { type: 'doubleJump', x: 3900, y: 2300, collected: false }
             ],
             
             // ========================================

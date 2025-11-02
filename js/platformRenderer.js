@@ -151,7 +151,7 @@ export class PlatformRenderer {
                 ctx.fillRect(brickX, brickY, actualWidth, actualHeight);
                 
                 // 磚塊立體感 - 左上高光
-                ctx.fillStyle = '#6a5f5a';
+                ctx.fillStyle = '#c0aaa1ff';
                 ctx.fillRect(brickX + 1, brickY + 1, actualWidth - 2, 2);
                 ctx.fillRect(brickX + 1, brickY + 1, 2, actualHeight - 2);
                 
