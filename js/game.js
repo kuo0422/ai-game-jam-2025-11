@@ -19,7 +19,8 @@ export class Game {
         this.canvas.height = CONFIG.CANVAS_HEIGHT;
         
         this.lastTime = 0;
-        this.running = true;
+        this.running = false; // 遊戲開始時不運行
+        this.gameStarted = false; // 遊戲是否已開始
         
         // 初始化音訊管理器
         this.audio = new AudioManager();
@@ -35,6 +36,43 @@ export class Game {
             this.backgroundLoaded = true;
         };
         
+        // 設置開始介面
+        this.setupStartScreen();
+    }
+    
+    setupStartScreen() {
+        const startBtn = document.getElementById('start-btn');
+        const startScreen = document.getElementById('start-screen');
+        
+        if (!startBtn || !startScreen) {
+            console.error('找不到開始介面元素');
+            return;
+        }
+        
+        startBtn.addEventListener('click', () => {
+            console.log('開始按鈕被點擊');
+            
+            // 隱藏按鈕
+            startScreen.classList.add('hide');
+            
+            // 等待按鈕淡出動畫完成
+            setTimeout(() => {
+                // 開始背景放大動畫
+                startScreen.classList.add('zoom-out');
+                
+                // 1.2秒後開始遊戲
+                setTimeout(() => {
+                    startScreen.classList.add('hidden');
+                    this.startGame();
+                }, 1200);
+            }, 300);
+        });
+    }
+    
+    startGame() {
+        console.log('遊戲開始');
+        this.gameStarted = true;
+        this.running = true;
         this.init();
     }
     
