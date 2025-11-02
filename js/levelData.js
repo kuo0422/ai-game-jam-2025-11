@@ -180,30 +180,16 @@ export const LEVEL_DATA = {
             // ========================================
             enemies: [
                 // // 起始區域
-                // { type: 'patrol', x: 400, y: 2300, patrolLeft: 200, patrolRight: 800 },
-                // { type: 'patrol', x: 600, y: 2100, patrolLeft: 450, patrolRight: 700 },
+                { type: 'sentry', x: 600, y: 2052 }, // 在階梯3上
                 
                 // // 主通道
-                // { type: 'patrol', x: 1300, y: 2300, patrolLeft: 1100, patrolRight: 1500 },
-                // { type: 'chaser', x: 1600, y: 2150, patrolLeft: 1500, patrolRight: 1900 },
-                // { type: 'patrol', x: 1900, y: 2200, patrolLeft: 1800, patrolRight: 2100 },
-                // { type: 'chaser', x: 2200, y: 2150, patrolLeft: 2100, patrolRight: 2400 },
-                
-                // // 深坑區域
-                // { type: 'patrol', x: 2750, y: 2250, patrolLeft: 2700, patrolRight: 2850 },
-                // { type: 'patrol', x: 2900, y: 2200, patrolLeft: 2850, patrolRight: 3000 },
-                // { type: 'chaser', x: 3300, y: 2300, patrolLeft: 3100, patrolRight: 3600 },
+                { type: 'sentry', x: 1600, y: 2152 }, // 在平台2上
                 
                 // // 垂直爬升區
-                // { type: 'patrol', x: 250, y: 1900, patrolLeft: 100, patrolRight: 430 },
-                // { type: 'chaser', x: 300, y: 1800, patrolLeft: 150, patrolRight: 530 },
-                // { type: 'patrol', x: 450, y: 1600, patrolLeft: 200, patrolRight: 580 },
+                { type: 'sentry', x: 700, y: 1602 }, // 在高層平台上
                 
                 // // 中間探索區
-                // { type: 'chaser', x: 1300, y: 1750, patrolLeft: 1200, patrolRight: 1700 },
-                // { type: 'patrol', x: 1650, y: 1650, patrolLeft: 1500, patrolRight: 2000 },
-                // { type: 'chaser', x: 2200, y: 1600, patrolLeft: 2100, patrolRight: 2550 },
-                // { type: 'patrol', x: 2750, y: 1750, patrolLeft: 2700, patrolRight: 2900 },
+                { type: 'sentry', x: 2800, y: 1852 }, // 在平台6上
                 
                 // // 能力球守衛
                 // { type: 'chaser', x: 1750, y: 1500, patrolLeft: 1700, patrolRight: 1850 },
@@ -213,16 +199,9 @@ export const LEVEL_DATA = {
                 // { type: 'chaser', x: 3550, y: 1700, patrolLeft: 3500, patrolRight: 3700 },
                 
                 // // Boss 通道
-                // { type: 'chaser', x: 1500, y: 1250, patrolLeft: 1400, patrolRight: 1900 },
-                // { type: 'chaser', x: 1900, y: 1050, patrolLeft: 1900, patrolRight: 2350 },
-                
-                // // Boss 門前守衛
-                // { type: 'chaser', x: 2200, y: 1100, patrolLeft: 2150, patrolRight: 2450 },
+                { type: 'sentry', x: 2200, y: 1102 }, // 在Boss門前平台上
                 
                 // // Boss 房守衛
-                // { type: 'chaser', x: 3500, y: 1300, patrolLeft: 3300, patrolRight: 4000 },
-                // { type: 'chaser', x: 4000, y: 1200, patrolLeft: 3800, patrolRight: 4300 },
-                // { type: 'chaser', x: 4500, y: 1200, patrolLeft: 4300, patrolRight: 4700 },
             ],
             
             // ========================================

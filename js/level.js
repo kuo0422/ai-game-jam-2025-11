@@ -4,7 +4,7 @@
 import { CONFIG } from './config.js';
 import { LEVEL_DATA } from './levelData.js';
 import { PLAYER_STATE } from './playerState.js';
-import { PatrolEnemy, ChaserEnemy } from './enemy.js';
+import { PatrolEnemy, ChaserEnemy, SentryEnemy } from './enemy.js';
 import { AbilityOrb } from './abilityOrb.js';
 import { ExperienceOrb } from './experience.js';
 import { PlatformRenderer } from './platformRenderer.js';
@@ -54,6 +54,8 @@ export class Level {
                     enemyData.patrolLeft, 
                     enemyData.patrolRight
                 );
+            } else if (enemyData.type === 'sentry') {
+                enemy = new SentryEnemy(enemyData.x, enemyData.y);
             }
             // 設置死亡回調
             enemy.setDeathCallback((x, y, amount) => {

@@ -7,7 +7,7 @@ import { Player } from './player.js';
 import { Level } from './level.js';
 import { AudioManager } from './audio.js';
 import { Atmosphere } from './atmosphere.js';
-import { SlashEffect, FireballEffect } from './effects.js';
+import { SlashEffect, FireballEffect, RayEffect } from './effects.js';
 import { Collision } from './collision.js';
 
 export class Game {
@@ -368,6 +368,12 @@ export class Game {
             effect.explode(x, y);
         }
         
+        this.effects.push(effect);
+    }
+    
+    // 創建射線特效
+    createRayEffect(startX, startY, endX, endY, player) {
+        const effect = new RayEffect(startX, startY, endX, endY, player);
         this.effects.push(effect);
     }
     

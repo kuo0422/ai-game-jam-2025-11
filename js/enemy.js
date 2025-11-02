@@ -3,6 +3,7 @@
 // ========================================
 import { CONFIG } from './config.js';
 import { Collision } from './collision.js';
+import { SpriteManager } from './spriteManager.js';
 
 // ========================================
 // 敵人基底類別
@@ -177,6 +178,217 @@ export class ChaserEnemy extends Enemy {
             ctx.fillStyle = '#ff0';
             ctx.font = '20px Arial';
             ctx.fillText('!', this.x + this.width / 2 - 5, this.y - 15);
+        }
+    }
+}
+
+// ========================================
+// 哨兵敵人 - 視野內會射線攻擊
+// ========================================
+export class SentryEnemy extends Enemy {
+    constructor(x, y) {
+        super(x, y, CONFIG.ENEMY.SENTRY, 'SENTRY');
+        this.detectionRange = CONFIG.ENEMY.SENTRY.DETECTION_RANGE;
+        this.attackCooldown = 0;
+        this.state = 'idle'; // 'idle', 'charging', 'attacking', 'cooldown'
+        this.chargeTimer = 0;
+        this.lastPlayerPos = { x: 0, y: 0 };
+
+        // Sprite 系統
+        this.spriteManager = new SpriteManager(
+            'Assets/Characters/monster1/metadata.json',
+            'Assets/Characters/monster1/'
+        );
+        this.spriteLoaded = false;
+        this.spriteManager.load().then(() => {
+            this.spriteLoaded = true;
+        });
+
+        this.animationFrame = 0;
+        this.animationTime = 0;
+        this.animationSpeed = 0.1;
+    }
+
+    update(deltaTime, platforms, player) {
+        if (!this.alive) return;
+
+        this.applyGravity();
+        this.move(platforms);
+
+        const distanceToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
+        const playerCenter = { x: player.x + player.width / 2, y: player.y + player.height / 2 };
+        const selfCenter = { x: this.x + this.width / 2, y: this.y + this.height / 2 };
+
+        // 狀態機
+        switch (this.state) {
+            case 'idle':
+                if (player.alive && distanceToPlayer < this.detectionRange) {
+                    if (Collision.checkLineOfSight(selfCenter, playerCenter, platforms)) {
+                        this.state = 'charging';
+                        this.chargeTimer = CONFIG.ENEMY.SENTRY.CHARGE_TIME;
+                    }
+                }
+                break;
+
+            case 'charging':
+                this.chargeTimer -= deltaTime;
+                this.direction = player.x > this.x ? 1 : -1; // 持續面向玩家
+                
+                // 如果在蓄力期間玩家離開視野或距離，取消攻擊
+                if (!player.alive || distanceToPlayer > this.detectionRange * 1.2 || !Collision.checkLineOfSight(selfCenter, playerCenter, platforms)) {
+                    this.state = 'idle';
+                } else if (this.chargeTimer <= 0) {
+                    this.state = 'attacking';
+                    this.lastPlayerPos = { ...playerCenter }; // 鎖定攻擊位置
+                    this.fire();
+                }
+                break;
+
+            case 'attacking':
+                // 攻擊動畫/效果的短暫持續狀態
+                this.state = 'cooldown';
+                this.attackCooldown = CONFIG.ENEMY.SENTRY.ATTACK_COOLDOWN;
+                break;
+
+            case 'cooldown':
+                this.attackCooldown -= deltaTime;
+                if (this.attackCooldown <= 0) {
+                    this.state = 'idle';
+                }
+                break;
+        }
+
+        this.updateAnimation(deltaTime);
+    }
+
+    fire() {
+        if (window.game && window.game.createRayEffect) {
+            const startX = this.x + this.width / 2;
+            const startY = this.y + this.height / 2 - 10; // 從眼睛位置發射
+            window.game.createRayEffect(startX, startY, this.lastPlayerPos.x, this.lastPlayerPos.y, window.game.player);
+        }
+    }
+
+    updateAnimation(deltaTime) {
+        let targetAnimation = 'idle';
+        if (this.state === 'charging') {
+            targetAnimation = 'attack';
+        } else if (this.state === 'attacking' || this.state === 'cooldown') {
+            targetAnimation = 'attack';
+        }
+
+        this.animationTime += deltaTime;
+        if (this.animationTime >= this.animationSpeed) {
+            this.animationTime = 0;
+            const frames = this.spriteLoaded ? this.spriteManager.getAnimationFrames(targetAnimation, this.direction > 0 ? 'east' : 'west') : [];
+            if (frames.length > 0) {
+                this.animationFrame = (this.animationFrame + 1) % frames.length;
+            }
+        }
+    }
+
+    draw(ctx) {
+        if (!this.alive) return;
+
+        // 使用 Sprite 繪製
+        if (this.spriteLoaded) {
+            const animName = (this.state === 'charging' || this.state === 'attacking' || this.state === 'cooldown') ? 'attack' : 'idle';
+            const dir = this.direction > 0 ? 'east' : 'west';
+            const frames = this.spriteManager.getAnimationFrames(animName, dir);
+            const image = frames[this.animationFrame] || frames[0];
+            if (image) {
+                const drawX = this.x + (this.width - image.width) / 2;
+                const drawY = this.y + (this.height - image.height);
+                ctx.drawImage(image, drawX, drawY);
+            }
+        } else {
+            // 備用繪製
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+
+        // 繪製血條
+        super.draw(ctx);
+    }
+}
+
+// ========================================
+// 遠程敵人 - 視野內會射線攻擊
+// ========================================
+export class RangedEnemy extends Enemy {
+    constructor(x, y) {
+        super(x, y, CONFIG.ENEMY.RANGED, 'RANGED');
+        this.detectionRange = CONFIG.ENEMY.RANGED.DETECTION_RANGE;
+        this.attackCooldown = 0;
+        this.isCharging = false;
+        this.chargeTimer = 0;
+    }
+
+    update(deltaTime, platforms, player) {
+        if (!this.alive) return;
+
+        this.applyGravity();
+        this.move(platforms);
+
+        if (this.attackCooldown > 0) {
+            this.attackCooldown -= deltaTime;
+        }
+
+        const distanceToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
+
+        // 如果玩家在偵測範圍內且存活
+        if (distanceToPlayer < this.detectionRange && player.alive && this.attackCooldown <= 0 && !this.isCharging) {
+            const start = { x: this.x + this.width / 2, y: this.y + this.height / 2 };
+            const end = { x: player.x + player.width / 2, y: player.y + player.height / 2 };
+
+            // 檢查視野
+            if (Collision.checkLineOfSight(start, end, platforms)) {
+                this.isCharging = true;
+                this.chargeTimer = CONFIG.ENEMY.RANGED.CHARGE_TIME;
+                this.direction = player.x > this.x ? 1 : -1;
+            }
+        }
+
+        // 蓄力邏輯
+        if (this.isCharging) {
+            this.chargeTimer -= deltaTime;
+            if (this.chargeTimer <= 0) {
+                this.fire(player);
+                this.isCharging = false;
+                this.attackCooldown = CONFIG.ENEMY.RANGED.ATTACK_COOLDOWN;
+            }
+        }
+    }
+
+    fire(player) {
+        if (window.game && window.game.createRayEffect) {
+            const startX = this.x + this.width / 2;
+            const startY = this.y + this.height / 2;
+            const endX = player.x + player.width / 2;
+            const endY = player.y + player.height / 2;
+            window.game.createRayEffect(startX, startY, endX, endY, player);
+        }
+    }
+
+    draw(ctx) {
+        super.draw(ctx);
+
+        // 蓄力時顯示特效
+        if (this.isCharging) {
+            const chargeProgress = 1 - (this.chargeTimer / CONFIG.ENEMY.RANGED.CHARGE_TIME);
+            const glowRadius = 5 + chargeProgress * 15;
+            const centerX = this.x + this.width / 2;
+            const centerY = this.y + this.height / 2;
+
+            const gradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, glowRadius);
+            gradient.addColorStop(0, 'rgba(255, 100, 100, 0.8)');
+            gradient.addColorStop(0.5, 'rgba(255, 50, 50, 0.4)');
+            gradient.addColorStop(1, 'rgba(255, 0, 0, 0)');
+
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, glowRadius, 0, Math.PI * 2);
+            ctx.fill();
         }
     }
 }
