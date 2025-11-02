@@ -108,5 +108,49 @@ export class AudioManager {
     setSFXVolume(volume) {
         this.sfxVolume = Math.max(0, Math.min(1, volume));
     }
+    
+    /**
+     * 播放短時間的音效片段（使用BGM的一小段）
+     * @param {number} duration - 播放時長（毫秒）
+     * @param {number} volume - 音量 (0-1)
+     */
+    playShortSFX(duration = 200, volume = 0.3) {
+        const audio = new Audio('Assets/Audio/BGM/Gameplay/Sacred Hollow.mp3');
+        audio.volume = volume;
+        audio.play().catch(e => console.error('音效播放失敗:', e));
+        
+        setTimeout(() => {
+            audio.pause();
+            audio.currentTime = 0;
+        }, duration);
+    }
+    
+    /**
+     * 播放按鈕點擊音效
+     */
+    playButtonClick() {
+        this.playShortSFX(150, 0.4);
+    }
+    
+    /**
+     * 播放存檔音效
+     */
+    playSaveSound() {
+        this.playShortSFX(300, 0.5);
+    }
+    
+    /**
+     * 播放門開啟音效
+     */
+    playDoorOpen() {
+        this.playShortSFX(500, 0.6);
+    }
+    
+    /**
+     * 播放勝利音效
+     */
+    playVictory() {
+        this.playShortSFX(1000, 0.7);
+    }
 }
 

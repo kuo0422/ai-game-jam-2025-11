@@ -52,13 +52,15 @@ export class Game {
             return;
         }
         
+        // 點擊開始遊戲按鈕，直接開始遊戲
         startBtn.addEventListener('click', () => {
             console.log('開始按鈕被點擊');
+            this.audio.playButtonClick();
             
-            // 隱藏按鈕
+            // 隱藏開始畫面
             startScreen.classList.add('hide');
             
-            // 等待按鈕淡出動畫完成
+            // 等待淡出動畫完成
             setTimeout(() => {
                 // 開始背景放大動畫
                 startScreen.classList.add('zoom-out');
