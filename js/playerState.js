@@ -9,5 +9,14 @@ export const PLAYER_STATE = {
         wallJump: false,
         downSlam: false
     },
-    collectedOrbs: []
+    collectedOrbs: [],
+    
+    // 重置狀態方法
+    reset() {
+        this.abilities.doubleJump = false;
+        this.abilities.dash = false;
+        this.abilities.wallJump = false;
+        this.abilities.downSlam = false;
+        this.collectedOrbs = [];
+    }
 };
