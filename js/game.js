@@ -5,6 +5,7 @@ import { CONFIG } from './config.js';
 import { Camera } from './camera.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
+import { AudioManager } from './audio.js';
 
 export class Game {
     constructor() {
@@ -16,6 +17,9 @@ export class Game {
         
         this.lastTime = 0;
         this.running = true;
+        
+        // 初始化音訊管理器
+        this.audio = new AudioManager();
         
         this.init();
     }
@@ -37,6 +41,9 @@ export class Game {
         this.updateHealthUI();
         this.updateAreaName(this.level.data.name);
         this.updateRegionName(); // 新增：顯示當前區域
+        
+        // 播放 BGM
+        this.audio.playBGM('Assets/Audio/BGM/Gameplay/Sacred Hollow.mp3', true);
         
         // 重試按鈕
         document.getElementById('retry-btn').addEventListener('click', () => {
