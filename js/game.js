@@ -85,6 +85,12 @@ export class Game {
         // 載入關卡
         this.level = new Level('forgotten_crossroads');
         
+        // 初始化最後存檔點（預設為關卡出生點）
+        this.lastSavePoint = {
+            x: this.level.data.spawnPoint.x,
+            y: this.level.data.spawnPoint.y
+        };
+        
         // 創建玩家
         this.player = new Player(
             this.level.data.spawnPoint.x,
@@ -341,6 +347,44 @@ export class Game {
         document.getElementById('death-screen').classList.remove('show');
     }
     
+    showVictory() {
+        console.log('顯示勝利畫面');
+        this.running = false; // 停止遊戲循環
+        const victoryScreen = document.getElementById('victory-screen');
+        victoryScreen.classList.add('show');
+        
+        // 播放勝利音效
+        if (this.audio && this.audio.playVictory) {
+            this.audio.playVictory();
+        }
+        
+        // 設置重新開始按鈕事件（如果還沒設置）
+        const restartBtn = document.getElementById('victory-restart-btn');
+        if (restartBtn && !restartBtn.dataset.listenerAdded) {
+            restartBtn.addEventListener('click', () => {
+                this.restartGame();
+            });
+            restartBtn.dataset.listenerAdded = 'true';
+        }
+    }
+    
+    hideVictoryScreen() {
+        const victoryScreen = document.getElementById('victory-screen');
+        victoryScreen.classList.remove('show');
+    }
+    
+    restartGame() {
+        // 隱藏勝利畫面
+        this.hideVictoryScreen();
+        
+        // 重置玩家狀態
+        PLAYER_STATE.reset();
+        
+        // 重新初始化遊戲
+        this.running = true;
+        this.init();
+    }
+    
     showAbilityNotification(text) {
         const notification = document.getElementById('ability-notification');
         const textElement = document.getElementById('ability-text');
@@ -362,8 +406,14 @@ export class Game {
             enemy.health = enemy.maxHealth;
         });
         
-        // 重生玩家
-        this.player.respawn(this.level.data.spawnPoint);
+        // 重生玩家到最後存檔點
+        this.player.respawn(this.lastSavePoint);
+    }
+    
+    // 更新存檔點（當玩家存檔時呼叫）
+    updateSavePoint(x, y) {
+        this.lastSavePoint = { x, y };
+        console.log('更新存檔點：', this.lastSavePoint);
     }
     
     // 創建斬擊特效
@@ -373,8 +423,8 @@ export class Game {
     }
     
     // 創建火球特效
-    createFireballEffect(x, y, direction, enemies, player) {
-        const effect = new FireballEffect(x, y, direction, enemies, player);
+    createFireballEffect(x, y, direction, enemies, player, damage = 1) {
+        const effect = new FireballEffect(x, y, direction, enemies, player, damage);
         
         // 立即檢查初始位置是否在牆內，如果是則立即爆炸
         const fireballBox = {

@@ -316,7 +316,7 @@ export class SlashEffect {
  * 火球特效 (J鍵) - 帶有追尾、粒子軌跡和爆炸效果
  */
 export class FireballEffect {
-    constructor(x, y, direction, targetEnemies = [], player = null) {
+    constructor(x, y, direction, targetEnemies = [], player = null, damage = 1) {
         this.startX = x;
         this.startY = y;
         this.x = x;
@@ -326,6 +326,7 @@ export class FireballEffect {
         this.target = null;
         this.active = true;
         this.player = player; // 玩家引用，用於爆炸擊退
+        this.damage = damage; // 火球傷害值
         
         // 火球基本屬性
         this.radius = 12;
@@ -611,9 +612,9 @@ export class FireballEffect {
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             if (distance < explosionRadius) {
-                // 擊中敵人（傷害在遊戲中處理）
+                // 擊中敵人（使用動態傷害值）
                 if (enemy.takeDamage) {
-                    enemy.takeDamage(1);
+                    enemy.takeDamage(this.damage);
                 }
             }
         });

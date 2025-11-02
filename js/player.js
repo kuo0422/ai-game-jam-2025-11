@@ -99,6 +99,15 @@ export class Player {
         });
     }
     
+    /**
+     * 計算當前攻擊傷害（基礎傷害 + 等級加成）
+     */
+    getAttackDamage() {
+        const baseDamage = CONFIG.PLAYER.ATTACK_DAMAGE;
+        const levelBonus = (this.level - 1) * CONFIG.PLAYER_EXP.DAMAGE_PER_LEVEL;
+        return baseDamage + levelBonus;
+    }
+    
     update(deltaTime, platforms, enemies, abilityOrbs, experienceOrbs, doors, savePoints) {
         if (!this.alive) return;
         
@@ -342,12 +351,14 @@ export class Player {
             
             // 傳遞敵人列表和玩家引用供追尾和爆炸擊退使用
             const enemies = window.game.level?.enemies || [];
-            window.game.createFireballEffect(startX, startY, this.attackDirection, enemies, this);
+            const damage = this.getAttackDamage(); // 獲取當前等級的傷害值
+            window.game.createFireballEffect(startX, startY, this.attackDirection, enemies, this, damage);
         }
     }
     
     checkAttackHit(enemies) {
         const attackBox = this.getAttackBox();
+        const damage = this.getAttackDamage(); // 使用動態傷害值
         
         enemies.forEach(enemy => {
             if (!enemy.alive) return;
@@ -360,7 +371,7 @@ export class Player {
             };
             
             if (Collision.checkAABB(attackBox, enemyBox) && !enemy.justHit) {
-                enemy.takeDamage(CONFIG.PLAYER.ATTACK_DAMAGE);
+                enemy.takeDamage(damage); // 使用等級加成後的傷害
                 enemy.justHit = true;
                 setTimeout(() => enemy.justHit = false, 100);
                 

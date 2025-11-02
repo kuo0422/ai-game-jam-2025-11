@@ -28,6 +28,11 @@ export class SavePoint {
         // 儲存遊戲狀態
         this.saveGame();
         
+        // 通知遊戲更新存檔點位置
+        if (window.game && window.game.updateSavePoint) {
+            window.game.updateSavePoint(this.x, this.y);
+        }
+        
         // 觸發視覺和音效反饋
         if (window.game && window.game.showAbilityNotification) {
             window.game.showAbilityNotification('遊戲已存檔！');
