@@ -44,6 +44,7 @@ export class Player {
         this.invincibleTimer = 0;
         this.stunned = false;
         this.stunnedTimer = 0;
+        this.attackStunTimer = 0; // 攻擊後的僵直計時器
         
         // 輸入
         this.keys = {};
@@ -98,6 +99,7 @@ export class Player {
             if (this.attackTimer <= 0) {
                 this.attacking = false;
                 this.airAttacking = false;
+                this.applyAttackStun(); // 攻擊結束後應用僵直
             }
         }
         
@@ -123,15 +125,25 @@ export class Player {
             }
         }
         
+        if (this.attackStunTimer > 0) {
+            this.attackStunTimer -= deltaTime;
+            if (this.attackStunTimer <= 0) {
+                this.stunned = false;
+            }
+        }
+        
         // 硬直時不能移動
         if (this.stunned) {
+            // 在硬直狀態下，只套用重力並更新位置，不處理輸入
             this.applyGravity(deltaTime);
             this.move(deltaTime, platforms);
             return;
         }
         
         // 水平移動
-        this.handleMovement(deltaTime);
+        if (!this.attacking) { // 只有在非攻擊狀態下才能移動
+            this.handleMovement(deltaTime);
+        }
         
         // 重力
         this.applyGravity(deltaTime);
@@ -216,19 +228,22 @@ export class Player {
     handleMovement(deltaTime) {
         const moveLeft = this.keys['a'] || this.keys['arrowleft'];
         const moveRight = this.keys['d'] || this.keys['arrowright'];
+
+        const accel = this.grounded ? CONFIG.PLAYER.MOVE_ACCELERATION : CONFIG.PLAYER.AIR_MOVE_ACCELERATION;
+        const decel = this.grounded ? CONFIG.PLAYER.MOVE_DECELERATION : CONFIG.PLAYER.AIR_MOVE_DECELERATION;
         
         if (moveLeft) {
-            this.vx -= CONFIG.PLAYER.MOVE_ACCELERATION;
+            this.vx -= accel;
             this.direction = -1;
         } else if (moveRight) {
-            this.vx += CONFIG.PLAYER.MOVE_ACCELERATION;
+            this.vx += accel;
             this.direction = 1;
         } else {
             // 減速
             if (this.vx > 0) {
-                this.vx = Math.max(0, this.vx - CONFIG.PLAYER.MOVE_DECELERATION);
+                this.vx = Math.max(0, this.vx - decel);
             } else if (this.vx < 0) {
-                this.vx = Math.min(0, this.vx + CONFIG.PLAYER.MOVE_DECELERATION);
+                this.vx = Math.min(0, this.vx + decel);
             }
         }
         
@@ -267,6 +282,11 @@ export class Player {
         this.attackTimer = CONFIG.PLAYER.ATTACK_DURATION;
         this.attackCooldown = CONFIG.PLAYER.ATTACK_COOLDOWN;
         this.attackDirection = this.direction;
+
+        // 只有在地面攻擊時才停止水平移動
+        if (this.grounded) {
+            this.vx = 0;
+        }
         
         // 空中攻擊標記
         if (!this.grounded) {
@@ -278,6 +298,15 @@ export class Player {
             const effectX = this.x + this.width / 2;
             const effectY = this.y + this.height / 2;
             window.game.createSlashEffect(effectX, effectY, this.attackDirection);
+        }
+    }
+    
+    // 應用攻擊後的僵直
+    applyAttackStun() {
+        const stunDuration = CONFIG.PLAYER.ATTACK_STUN_DURATION;
+        if (stunDuration > 0) {
+            this.stunned = true;
+            this.attackStunTimer = stunDuration;
         }
     }
     

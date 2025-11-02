@@ -16,6 +16,8 @@ export const CONFIG = {
         // 移動
         MOVE_ACCELERATION: 0.8,
         MOVE_DECELERATION: 0.6,
+        AIR_MOVE_ACCELERATION: 0.3, // 空中移動加速度
+        AIR_MOVE_DECELERATION: 0.2, // 空中移動減速度
         MAX_SPEED: 5,
         
         // 跳躍
@@ -31,6 +33,7 @@ export const CONFIG = {
         ATTACK_COOLDOWN: 0.3, // 秒
         ATTACK_DURATION: 0.2, // 秒
         ATTACK_DAMAGE: 1,
+        ATTACK_STUN_DURATION: 0.1, // 斬擊後的僵直時間（秒）
         
         // 受擊
         HIT_INVINCIBLE_TIME: 0.5, // 秒
