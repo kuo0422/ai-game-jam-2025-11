@@ -151,24 +151,24 @@ export class Level {
             // 使用 PlatformRenderer 繪製平台
             PlatformRenderer.draw(ctx, platform);
             
-            // 在平台上標記數字（開發者模式）
-            if (CONFIG.DEBUG.SHOW_PLATFORM_NUMBERS) {
-                // 使用平台的 id 屬性，如果沒有則使用索引
-                const displayNumber = platform.id || (index + 1);
+            // 在平台上標記數字（開發者模式）- 牆壁除外
+            // if (CONFIG.DEBUG.SHOW_PLATFORM_NUMBERS && platform.type !== 'wall') {
+            //     // 使用平台的 id 屬性，如果沒有則使用索引
+            //     const displayNumber = platform.id || (index + 1);
                 
-                ctx.fillStyle = CONFIG.DEBUG.PLATFORM_NUMBER_COLOR;
-                ctx.font = `bold ${CONFIG.DEBUG.PLATFORM_NUMBER_SIZE}px Arial`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+            //     ctx.fillStyle = CONFIG.DEBUG.PLATFORM_NUMBER_COLOR;
+            //     ctx.font = `bold ${CONFIG.DEBUG.PLATFORM_NUMBER_SIZE}px Arial`;
+            //     ctx.textAlign = 'center';
+            //     ctx.textBaseline = 'middle';
                 
-                // 數字外框（陰影效果）
-                ctx.strokeStyle = CONFIG.DEBUG.PLATFORM_NUMBER_OUTLINE;
-                ctx.lineWidth = 3;
-                ctx.strokeText(displayNumber, platform.x + platform.width / 2, platform.y + platform.height / 2);
+            //     // 數字外框（陰影效果）
+            //     ctx.strokeStyle = CONFIG.DEBUG.PLATFORM_NUMBER_OUTLINE;
+            //     ctx.lineWidth = 3;
+            //     ctx.strokeText(displayNumber, platform.x + platform.width / 2, platform.y + platform.height / 2);
                 
-                // 數字本體
-                ctx.fillText(displayNumber, platform.x + platform.width / 2, platform.y + platform.height / 2);
-            }
+            //     // 數字本體
+            //     ctx.fillText(displayNumber, platform.x + platform.width / 2, platform.y + platform.height / 2);
+            // }
         });
         
         // 繪製門
