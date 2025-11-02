@@ -150,13 +150,32 @@ export class Level {
     
     draw(ctx) {
         // 繪製平台
-        this.platforms.forEach(platform => {
+        this.platforms.forEach((platform, index) => {
             ctx.fillStyle = CONFIG.PLATFORM.COLOR;
             ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
             
             ctx.strokeStyle = CONFIG.PLATFORM.OUTLINE_COLOR;
             ctx.lineWidth = 2;
             ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            
+            // 在平台上標記數字（開發者模式）
+            if (CONFIG.DEBUG.SHOW_PLATFORM_NUMBERS) {
+                // 使用平台的 id 屬性，如果沒有則使用索引
+                const displayNumber = platform.id || (index + 1);
+                
+                ctx.fillStyle = CONFIG.DEBUG.PLATFORM_NUMBER_COLOR;
+                ctx.font = `bold ${CONFIG.DEBUG.PLATFORM_NUMBER_SIZE}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                // 數字外框（陰影效果）
+                ctx.strokeStyle = CONFIG.DEBUG.PLATFORM_NUMBER_OUTLINE;
+                ctx.lineWidth = 3;
+                ctx.strokeText(displayNumber, platform.x + platform.width / 2, platform.y + platform.height / 2);
+                
+                // 數字本體
+                ctx.fillText(displayNumber, platform.x + platform.width / 2, platform.y + platform.height / 2);
+            }
         });
         
         // 繪製存檔點（長椅）

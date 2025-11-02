@@ -92,6 +92,14 @@ export const CONFIG = {
         { speed: 0.6, color: '#ba4294ff', alpha: 0.5 }
     ],
     
+    // 開發者工具設定
+    DEBUG: {
+        SHOW_PLATFORM_NUMBERS: true,  // 顯示平台編號（方便調整地圖）
+        PLATFORM_NUMBER_COLOR: '#ffeb3b',  // 數字顏色（黃色）
+        PLATFORM_NUMBER_OUTLINE: '#000',   // 數字外框顏色（黑色）
+        PLATFORM_NUMBER_SIZE: 14           // 數字大小
+    },
+    
     // 特效設定
     EFFECTS: {
         SLASH_DURATION: 0.15 // 斬擊特效持續時間（秒）
