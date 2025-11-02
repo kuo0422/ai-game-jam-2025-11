@@ -6,6 +6,7 @@ import { Camera } from './camera.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
 import { AudioManager } from './audio.js';
+import { Atmosphere } from './atmosphere.js';
 import { SlashEffect, FireballEffect } from './effects.js';
 import { Collision } from './collision.js';
 
@@ -88,6 +89,13 @@ export class Game {
         // 創建相機
         this.camera = new Camera(this.level.data.bounds);
         
+        // 創建環境氛圍系統
+        this.atmosphere = new Atmosphere(
+            this.canvas.width,
+            this.canvas.height,
+            this.level.data.bounds
+        );
+        
         // 設定 UI
         this.updateHealthUI();
         this.updateAreaName(this.level.data.name);
@@ -136,6 +144,9 @@ export class Game {
         // 更新關卡
         this.level.update(deltaTime, this.player);
         
+        // 更新環境氛圍
+        this.atmosphere.update(deltaTime, this.camera);
+        
         // 更新特效
         this.effects.forEach(effect => {
             // 火球需要平台信息進行碰撞檢測
@@ -179,6 +190,9 @@ export class Game {
         this.ctx.save();
         this.camera.apply(this.ctx);
         
+        // 繪製環境粒子 (在關卡和玩家之間，營造深度)
+        this.atmosphere.draw(this.ctx, this.camera);
+        
         // 繪製關卡
         this.level.draw(this.ctx);
         
@@ -190,6 +204,9 @@ export class Game {
         
         // 恢復相機變換
         this.ctx.restore();
+        
+        // 繪製前景霧氣 (在所有東西之上)
+        this.atmosphere.drawFog(this.ctx, this.camera);
     }
     
     drawParallaxBackground() {
