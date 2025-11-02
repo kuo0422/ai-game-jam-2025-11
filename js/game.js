@@ -46,30 +46,57 @@ export class Game {
     setupStartScreen() {
         const startBtn = document.getElementById('start-btn');
         const startScreen = document.getElementById('start-screen');
+        const controlsGuide = document.getElementById('controls-guide');
+        const closeGuideBtn = document.getElementById('close-guide-btn');
         
         if (!startBtn || !startScreen) {
             console.error('找不到開始介面元素');
             return;
         }
         
+        // 點擊開始遊戲按鈕，顯示操作指南
         startBtn.addEventListener('click', () => {
             console.log('開始按鈕被點擊');
+            this.audio.playButtonClick();
             
-            // 隱藏按鈕
+            // 隱藏開始畫面
             startScreen.classList.add('hide');
             
-            // 等待按鈕淡出動畫完成
+            // 顯示操作指南
             setTimeout(() => {
-                // 開始背景放大動畫
-                startScreen.classList.add('zoom-out');
-                
-                // 1.2秒後開始遊戲
-                setTimeout(() => {
-                    startScreen.classList.add('hidden');
-                    this.startGame();
-                }, 1200);
-            }, 300);
+                if (controlsGuide) {
+                    controlsGuide.classList.add('show');
+                }
+            }, 400);
         });
+        
+        // 關閉操作指南，開始遊戲
+        if (closeGuideBtn) {
+            closeGuideBtn.addEventListener('click', () => {
+                console.log('關閉操作指南，開始遊戲');
+                this.audio.playButtonClick();
+                
+                if (controlsGuide) {
+                    controlsGuide.classList.add('hide');
+                }
+                
+                // 等待淡出動畫完成後開始遊戲
+                setTimeout(() => {
+                    if (controlsGuide) {
+                        controlsGuide.classList.remove('show', 'hide');
+                    }
+                    
+                    // 開始背景放大動畫
+                    startScreen.classList.add('zoom-out');
+                    
+                    // 1.2秒後開始遊戲
+                    setTimeout(() => {
+                        startScreen.classList.add('hidden');
+                        this.startGame();
+                    }, 1200);
+                }, 400);
+            });
+        }
     }
     
     startGame() {
