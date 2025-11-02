@@ -7,6 +7,7 @@ import { PLAYER_STATE } from './playerState.js';
 import { PatrolEnemy, ChaserEnemy } from './enemy.js';
 import { AbilityOrb } from './abilityOrb.js';
 import { ExperienceOrb } from './experience.js';
+import { PlatformRenderer } from './platformRenderer.js';
 
 export class Level {
     constructor(areaKey) {
@@ -149,14 +150,10 @@ export class Level {
     }
     
     draw(ctx) {
-        // 繪製平台
+        // 繪製平台（使用像素風格渲染器）
         this.platforms.forEach((platform, index) => {
-            ctx.fillStyle = CONFIG.PLATFORM.COLOR;
-            ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
-            
-            ctx.strokeStyle = CONFIG.PLATFORM.OUTLINE_COLOR;
-            ctx.lineWidth = 2;
-            ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+            // 使用 PlatformRenderer 繪製平台
+            PlatformRenderer.draw(ctx, platform);
             
             // 在平台上標記數字（開發者模式）
             if (CONFIG.DEBUG.SHOW_PLATFORM_NUMBERS) {
