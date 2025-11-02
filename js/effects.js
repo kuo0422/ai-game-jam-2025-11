@@ -2,7 +2,7 @@
 // 特效系統
 // ========================================
 import { Collision } from './collision.js';
-
+import { CONFIG } from './config.js';
 /**
  * 增強斬擊特效 (K鍵) - 帶有多層粒子、漸層和光暈效果
  * 注意：斬擊特效位置固定在世界坐標，不會跟隨角色移動
@@ -865,5 +865,120 @@ export class FireballEffect {
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         return distance < this.radius + Math.max(enemy.width, enemy.height) / 2;
+    }
+}
+
+/**
+ * 射線特效 (哨兵敵人攻擊)
+ */
+export class RayEffect {
+    constructor(startX, startY, endX, endY, player) {
+        this.startX = startX;
+        this.startY = startY;
+        this.endX = endX;
+        this.endY = endY;
+        this.player = player;
+
+        this.lifetime = 0.4; // 特效持續時間
+        this.age = 0;
+        this.active = true;
+
+        this.sparks = [];
+        this.hitTarget = false;
+
+        this.checkHit();
+    }
+
+    checkHit() {
+        // 簡單的線段與玩家AABB碰撞檢測
+        const playerBox = { x: this.player.x, y: this.player.y, width: this.player.width, height: this.player.height };
+        
+        // 檢查玩家是否在射線的路徑上 (簡化版)
+        // 這裡我們假設射線很寬，只要玩家在終點附近就算擊中
+        const distance = Math.hypot(this.endX - (playerBox.x + playerBox.width / 2), this.endY - (playerBox.y + playerBox.height / 2));
+
+        if (distance < playerBox.width) { // 如果射線終點離玩家很近
+            this.hitTarget = true;
+            if (this.player.takeDamage) {
+                this.player.takeDamage(CONFIG.ENEMY.SENTRY.DAMAGE, this.startX);
+            }
+            // 在玩家身上產生火花
+            this.createSparks(this.endX, this.endY);
+        } else {
+            // 如果沒打中玩家，就在射線終點產生火花
+            this.createSparks(this.endX, this.endY);
+        }
+    }
+
+    createSparks(x, y) {
+        const sparkCount = 15;
+        for (let i = 0; i < sparkCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 50 + Math.random() * 100;
+            this.sparks.push({
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                size: 1 + Math.random() * 2,
+                lifetime: 0.2 + Math.random() * 0.2,
+                age: 0
+            });
+        }
+    }
+
+    update(deltaTime) {
+        this.age += deltaTime;
+        if (this.age >= this.lifetime) {
+            this.active = false;
+        }
+
+        // 更新火花粒子
+        this.sparks.forEach(spark => {
+            spark.age += deltaTime;
+            spark.x += spark.vx * deltaTime;
+            spark.y += spark.vy * deltaTime;
+            spark.vx *= 0.9;
+            spark.vy *= 0.9;
+        });
+        this.sparks = this.sparks.filter(s => s.age < s.lifetime);
+    }
+
+    draw(ctx) {
+        if (!this.active) return;
+
+        const progress = this.age / this.lifetime;
+        const alpha = Math.sin((1 - progress) * Math.PI); // 淡出效果
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        // 繪製外層光暈
+        ctx.strokeStyle = `rgba(255, 150, 150, ${alpha * 0.5})`;
+        ctx.lineWidth = 15;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(this.startX, this.startY);
+        ctx.lineTo(this.endX, this.endY);
+        ctx.stroke();
+
+        // 繪製核心光束
+        ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(this.startX, this.startY);
+        ctx.lineTo(this.endX, this.endY);
+        ctx.stroke();
+
+        // 繪製火花
+        this.sparks.forEach(spark => {
+            const pAlpha = (1 - spark.age / spark.lifetime) * alpha;
+            ctx.fillStyle = `rgba(255, 200, 200, ${pAlpha})`;
+            ctx.beginPath();
+            ctx.arc(spark.x, spark.y, spark.size, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        ctx.restore();
     }
 }

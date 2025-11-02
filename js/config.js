@@ -66,6 +66,17 @@ export const CONFIG = {
             HEALTH: 4,
             DAMAGE: 1,
             DETECTION_RANGE: 300
+        },
+        SENTRY: {
+            WIDTH: 48,
+            HEIGHT: 48,
+            COLOR: '#9b59b6', // 紫色
+            SPEED: 0, // 不移動
+            HEALTH: 3,
+            DAMAGE: 1,
+            DETECTION_RANGE: 600,
+            ATTACK_COOLDOWN: 3.0, // 秒
+            CHARGE_TIME: 1.2 // 蓄力時間（秒）
         }
     },
     
@@ -117,7 +128,8 @@ export const CONFIG = {
         // 敵人類型對應的經驗值數量
         ENEMY_EXP: {
             PATROL: 5,
-            CHASER: 8
+            CHASER: 8,
+            SENTRY: 12
         }
     },
     
