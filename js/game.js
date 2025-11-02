@@ -204,6 +204,9 @@ export class Game {
         // 繪製玩家
         this.player.draw(this.ctx);
         
+        // 繪製互動提示
+        this.drawInteractionHints();
+
         // 繪製特效（在玩家上方，確保可見）
         this.effects.forEach(effect => effect.draw(this.ctx));
         
@@ -214,6 +217,23 @@ export class Game {
         this.atmosphere.drawFog(this.ctx, this.camera);
     }
     
+    /**
+     * 繪製互動提示
+     */
+    drawInteractionHints() {
+        const nearest = this.player.getNearestInteractable();
+        if (nearest) {
+            switch(nearest.type) {
+                case 'door':
+                    nearest.object.drawInteractionHint(this.ctx, this.player.x, this.player.y);
+                    break;
+                case 'savePoint':
+                    nearest.object.drawInteractionHint(this.ctx);
+                    break;
+            }
+        }
+    }
+
     drawParallaxBackground() {
         if (this.backgroundLoaded) {
             // 繪製背景圖片作為視差背景
