@@ -99,7 +99,7 @@ export class Player {
         });
     }
     
-    update(deltaTime, platforms, enemies, abilityOrbs, experienceOrbs) {
+    update(deltaTime, platforms, enemies, abilityOrbs, experienceOrbs, doors, savePoints) {
         if (!this.alive) return;
         
         // 更新計時器
@@ -178,6 +178,9 @@ export class Player {
         
         // 檢查能力球收集（自動收集）
         this.checkAbilityOrbs(abilityOrbs);
+        
+        // 檢查附近的可互動物件（門、存檔點）
+        this.checkNearbyInteractables(doors, savePoints);
         
         // 經驗值收集在 level.js 中處理（更高效）
         
