@@ -4,6 +4,7 @@
 import { CONFIG } from './config.js';
 import { PLAYER_STATE } from './playerState.js';
 import { Collision } from './collision.js';
+import { SpriteManager } from './spriteManager.js';
 
 export class Player {
     constructor(x, y) {
@@ -44,6 +45,22 @@ export class Player {
         
         // 輸入
         this.keys = {};
+        
+        // Sprite 系統
+        this.spriteManager = new SpriteManager(
+            'Assets/Characters/Player/metadata.json',
+            'Assets/Characters/Player/'
+        );
+        this.spriteLoaded = false;
+        this.spriteManager.load().then(() => {
+            this.spriteLoaded = true;
+        });
+        
+        // 動畫狀態
+        this.currentAnimation = 'breathing-idle';
+        this.animationFrame = 0;
+        this.animationTime = 0;
+        this.animationSpeed = 0.15; // 動畫播放速度（秒/幀）
         
         this.setupInput();
     }
@@ -122,6 +139,9 @@ export class Player {
         // 移動與碰撞
         this.move(deltaTime, platforms);
         
+        // 更新動畫狀態
+        this.updateAnimation(deltaTime);
+        
         // 攻擊判定
         if (this.attacking) {
             this.checkAttackHit(enemies);
@@ -134,6 +154,55 @@ export class Player {
         
         // 檢查敵人碰撞
         this.checkEnemyCollision(enemies);
+    }
+    
+    /**
+     * 更新動畫狀態
+     */
+    updateAnimation(deltaTime) {
+        this.animationTime += deltaTime;
+        
+        // 確定當前動畫
+        let targetAnimation = 'breathing-idle';
+        
+        if (!this.grounded && Math.abs(this.vy) > 2) {
+            // 跳躍/下降
+            targetAnimation = 'jumping-1';
+        } else if (Math.abs(this.vx) > 0.5) {
+            // 移動
+            targetAnimation = 'running-8-frames';
+        } else {
+            // 待機
+            targetAnimation = 'breathing-idle';
+        }
+        
+        // 如果動畫改變，重置幀
+        if (this.currentAnimation !== targetAnimation) {
+            this.currentAnimation = targetAnimation;
+            this.animationFrame = 0;
+            this.animationTime = 0;
+        }
+        
+        // 更新動畫幀
+        if (this.animationTime >= this.animationSpeed) {
+            this.animationTime = 0;
+            // 獲取當前動畫的幀數
+            const spriteDirection = this.spriteLoaded 
+                ? this.spriteManager.getSpriteDirection(
+                    this.direction, 
+                    Math.abs(this.vx) > 0.5, 
+                    this.vy,
+                    this.currentAnimation
+                  )
+                : 'east';
+            const frames = this.spriteLoaded 
+                ? this.spriteManager.getAnimationFrames(this.currentAnimation, spriteDirection)
+                : [];
+            
+            if (frames.length > 0) {
+                this.animationFrame = (this.animationFrame + 1) % frames.length;
+            }
+        }
     }
     
     handleMovement(deltaTime) {
@@ -392,18 +461,14 @@ export class Player {
             ctx.globalAlpha = 0.5;
         }
         
-        // 繪製玩家
-        ctx.fillStyle = CONFIG.PLAYER.COLOR;
-        ctx.fillRect(this.x, this.y, this.width, this.height);
-        
-        // 繪製方向指示
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(
-            this.direction > 0 ? this.x + this.width - 5 : this.x,
-            this.y + 10,
-            5,
-            10
-        );
+        // 使用 sprite 繪製
+        if (this.spriteLoaded) {
+            this.drawSprite(ctx);
+        } else {
+            // Sprite 未載入時使用簡單矩形
+            ctx.fillStyle = CONFIG.PLAYER.COLOR;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
         
         ctx.globalAlpha = 1;
         
@@ -415,4 +480,52 @@ export class Player {
             ctx.strokeRect(attackBox.x, attackBox.y, attackBox.width, attackBox.height);
         }
     }
+    
+    /**
+     * 繪製 sprite
+     */
+    drawSprite(ctx) {
+        // 獲取當前動畫方向
+        const spriteDirection = this.spriteManager.getSpriteDirection(
+            this.direction, 
+            Math.abs(this.vx) > 0.5, 
+            this.vy,
+            this.currentAnimation
+        );
+        
+        // 獲取當前幀
+        const frames = this.spriteManager.getAnimationFrames(
+            this.currentAnimation,
+            spriteDirection
+        );
+        
+        let currentImage = null;
+        
+        if (frames.length > 0) {
+            // 使用動畫幀
+            currentImage = frames[this.animationFrame] || frames[0];
+        } else {
+            // 如果沒有動畫，使用靜態旋轉圖片
+            currentImage = this.spriteManager.getRotation(spriteDirection);
+        }
+        
+        if (currentImage) {
+            // 計算繪製位置（中心對齊）
+            const metadata = this.spriteManager?.metadata;
+            const spriteWidth = metadata?.character?.size?.width || 64;
+            const spriteHeight = metadata?.character?.size?.height || 64;
+            
+            // 調整繪製位置使其對齊角色碰撞盒
+            const drawX = this.x + (this.width - spriteWidth) / 2;
+            const drawY = this.y + (this.height - spriteHeight);
+            
+            // 繪製 sprite（方向已經在 getSpriteDirection 中處理）
+            ctx.drawImage(currentImage, drawX, drawY, spriteWidth, spriteHeight);
+        } else {
+            // 備用：繪製簡單矩形
+            ctx.fillStyle = CONFIG.PLAYER.COLOR;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+    
 }
