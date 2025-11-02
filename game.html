@@ -1,0 +1,1232 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hollow Knight Style Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 100%);
+        }
+        
+        #ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        
+        #health {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .health-mask {
+            width: 30px;
+            height: 30px;
+            background: #fff;
+            border: 2px solid #333;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .health-mask.empty {
+            background: #333;
+        }
+        
+        #area-name {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #fff;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        #death-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: all;
+        }
+        
+        #death-screen.show {
+            display: flex;
+        }
+        
+        #death-screen h1 {
+            color: #ff0000;
+            font-size: 72px;
+            margin-bottom: 40px;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.8);
+        }
+        
+        #retry-btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: #fff;
+            border: 3px solid #333;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #retry-btn:hover {
+            background: #ffcc00;
+            transform: scale(1.1);
+        }
+        
+        #ability-notification {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px 50px;
+            border: 4px solid #333;
+            border-radius: 10px;
+            font-size: 24px;
+            color: #333;
+            display: none;
+            pointer-events: all;
+            text-align: center;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+        }
+        
+        #ability-notification.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <div id="health"></div>
+        <div id="area-name">遺忘的十字路</div>
+        <div id="death-screen">
+            <h1>YOU DIED</h1>
+            <button id="retry-btn">RETRY</button>
+        </div>
+        <div id="ability-notification">
+            <div id="ability-text"></div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // 遊戲設定檔 - 所有數值都在這裡調整
+        // ========================================
+        const CONFIG = {
+            // 畫布設定
+            CANVAS_WIDTH: 1280,
+            CANVAS_HEIGHT: 720,
+            
+            // 玩家設定
+            PLAYER: {
+                WIDTH: 30,
+                HEIGHT: 50,
+                COLOR: '#4a90e2',
+                MAX_HEALTH: 5,
+                
+                // 移動
+                MOVE_ACCELERATION: 0.8,
+                MOVE_DECELERATION: 0.6,
+                MAX_SPEED: 5,
+                
+                // 跳躍
+                JUMP_FORCE: -12,
+                GRAVITY: 0.6,
+                MAX_FALL_SPEED: 15,
+                COYOTE_TIME: 0.1, // 秒
+                
+                // 攻擊
+                ATTACK_RANGE: 50,
+                ATTACK_WIDTH: 60,
+                ATTACK_HEIGHT: 40,
+                ATTACK_COOLDOWN: 0.3, // 秒
+                ATTACK_DURATION: 0.2, // 秒
+                ATTACK_DAMAGE: 1,
+                
+                // 受擊
+                HIT_INVINCIBLE_TIME: 0.5, // 秒
+                HIT_KNOCKBACK: 8,
+                HIT_STUN_TIME: 0.3, // 秒
+                
+                // 進階能力
+                DOUBLE_JUMP_FORCE: -10,
+                POGO_BOUNCE_FORCE: -8,
+                DASH_SPEED: 12,
+                DASH_DURATION: 0.2
+            },
+            
+            // 敵人設定
+            ENEMY: {
+                PATROL: {
+                    WIDTH: 40,
+                    HEIGHT: 40,
+                    COLOR: '#e74c3c',
+                    SPEED: 2,
+                    HEALTH: 3,
+                    DAMAGE: 1,
+                    DETECTION_RANGE: 0 // 不偵測玩家
+                },
+                CHASER: {
+                    WIDTH: 45,
+                    HEIGHT: 45,
+                    COLOR: '#c0392b',
+                    SPEED: 3.5,
+                    HEALTH: 4,
+                    DAMAGE: 1,
+                    DETECTION_RANGE: 300
+                }
+            },
+            
+            // 平台設定
+            PLATFORM: {
+                COLOR: '#34495e',
+                OUTLINE_COLOR: '#2c3e50'
+            },
+            
+            // 能力球設定
+            ABILITY_ORB: {
+                RADIUS: 20,
+                COLOR: '#f39c12',
+                GLOW_COLOR: '#f1c40f'
+            },
+            
+            // 相機設定
+            CAMERA: {
+                FOLLOW_SMOOTHNESS: 0.1,
+                EDGE_MARGIN: 200
+            },
+            
+            // 視差背景層
+            PARALLAX_LAYERS: [
+                { speed: 0.2, color: '#0f0f1e', alpha: 1.0 },
+                { speed: 0.4, color: '#1a1a2e', alpha: 0.7 },
+                { speed: 0.6, color: '#2a2a3e', alpha: 0.5 }
+            ]
+        };
+
+        // ========================================
+        // 碰撞檢測工具類別
+        // ========================================
+        class Collision {
+            /**
+             * AABB 碰撞檢測
+             */
+            static checkAABB(rect1, rect2) {
+                return rect1.x < rect2.x + rect2.width &&
+                       rect1.x + rect1.width > rect2.x &&
+                       rect1.y < rect2.y + rect2.height &&
+                       rect1.y + rect1.height > rect2.y;
+            }
+            
+            /**
+             * 點與矩形碰撞
+             */
+            static pointInRect(px, py, rect) {
+                return px >= rect.x && px <= rect.x + rect.width &&
+                       py >= rect.y && py <= rect.y + rect.height;
+            }
+            
+            /**
+             * 圓形碰撞檢測
+             */
+            static checkCircle(c1, c2) {
+                const dx = c1.x - c2.x;
+                const dy = c1.y - c2.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                return distance < c1.radius + c2.radius;
+            }
+        }
+
+        // ========================================
+        // 關卡資料結構
+        // ========================================
+        const LEVEL_DATA = {
+            areas: {
+                'start': {
+                    name: '遺忘的十字路',
+                    bounds: { x: 0, y: 0, width: 2000, height: 1200 },
+                    spawnPoint: { x: 100, y: 500 },
+                    platforms: [
+                        // 地面
+                        { x: 0, y: 1100, width: 800, height: 100 },
+                        { x: 900, y: 1100, width: 1100, height: 100 },
+                        
+                        // 中層平台
+                        { x: 300, y: 900, width: 200, height: 30 },
+                        { x: 600, y: 750, width: 250, height: 30 },
+                        { x: 1000, y: 850, width: 200, height: 30 },
+                        { x: 1300, y: 700, width: 200, height: 30 },
+                        
+                        // 高層平台
+                        { x: 200, y: 600, width: 150, height: 30 },
+                        { x: 500, y: 500, width: 200, height: 30 },
+                        { x: 900, y: 550, width: 180, height: 30 },
+                        { x: 1200, y: 400, width: 200, height: 30 },
+                        
+                        // 牆壁
+                        { x: -50, y: 0, width: 50, height: 1200 },
+                        { x: 2000, y: 0, width: 50, height: 1200 }
+                    ],
+                    enemies: [
+                        { type: 'patrol', x: 400, y: 850, patrolLeft: 300, patrolRight: 500 },
+                        { type: 'patrol', x: 1100, y: 800, patrolLeft: 1000, patrolRight: 1200 },
+                        { type: 'chaser', x: 700, y: 700, patrolLeft: 600, patrolRight: 1400 },
+                        { type: 'chaser', x: 1400, y: 350, patrolLeft: 1200, patrolRight: 1600 }
+                    ],
+                    abilityOrbs: [
+                        { type: 'doubleJump', x: 1300, y: 350, collected: false }
+                    ],
+                    doors: [
+                        // 預留：之後可以加鎖門
+                        // { x: 1800, y: 1000, width: 100, height: 100, locked: true, requiredKey: 'bossKey' }
+                    ]
+                }
+                // 可以繼續添加其他區域
+                // 'area2': { ... }
+            },
+            currentArea: 'start'
+        };
+
+        // ========================================
+        // 玩家狀態 (Metroidvania 解鎖能力)
+        // ========================================
+        const PLAYER_STATE = {
+            abilities: {
+                doubleJump: false,
+                // 預留其他能力
+                dash: false,
+                wallJump: false,
+                downSlam: false
+            },
+            collectedOrbs: []
+        };
+
+        // ========================================
+        // 相機類別 - 跟隨玩家並做視差背景
+        // ========================================
+        class Camera {
+            constructor(levelBounds) {
+                this.x = 0;
+                this.y = 0;
+                this.targetX = 0;
+                this.targetY = 0;
+                this.levelBounds = levelBounds;
+            }
+            
+            follow(player, canvasWidth, canvasHeight) {
+                // 計算目標位置 (玩家置中)
+                this.targetX = player.x + player.width / 2 - canvasWidth / 2;
+                this.targetY = player.y + player.height / 2 - canvasHeight / 2;
+                
+                // 限制在關卡範圍內
+                this.targetX = Math.max(0, Math.min(this.targetX, 
+                    this.levelBounds.width - canvasWidth));
+                this.targetY = Math.max(0, Math.min(this.targetY, 
+                    this.levelBounds.height - canvasHeight));
+                
+                // 平滑跟隨
+                this.x += (this.targetX - this.x) * CONFIG.CAMERA.FOLLOW_SMOOTHNESS;
+                this.y += (this.targetY - this.y) * CONFIG.CAMERA.FOLLOW_SMOOTHNESS;
+            }
+            
+            apply(ctx) {
+                ctx.translate(-this.x, -this.y);
+            }
+            
+            reset(ctx) {
+                ctx.translate(this.x, this.y);
+            }
+        }
+
+        // ========================================
+        // 玩家類別
+        // ========================================
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = CONFIG.PLAYER.WIDTH;
+                this.height = CONFIG.PLAYER.HEIGHT;
+                this.vx = 0;
+                this.vy = 0;
+                
+                // 狀態
+                this.grounded = false;
+                this.direction = 1; // 1 = 右, -1 = 左
+                this.health = CONFIG.PLAYER.MAX_HEALTH;
+                this.alive = true;
+                
+                // 跳躍相關
+                this.canJump = true;
+                this.hasDoubleJump = false;
+                this.coyoteTimer = 0;
+                
+                // 攻擊相關
+                this.attacking = false;
+                this.attackTimer = 0;
+                this.attackCooldown = 0;
+                this.attackDirection = 1;
+                this.airAttacking = false;
+                
+                // 受擊相關
+                this.invincible = false;
+                this.invincibleTimer = 0;
+                this.stunned = false;
+                this.stunnedTimer = 0;
+                
+                // 輸入
+                this.keys = {};
+                
+                this.setupInput();
+            }
+            
+            setupInput() {
+                window.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                    
+                    // 跳躍
+                    if (e.key === ' ' || e.key.toLowerCase() === 'w') {
+                        this.jump();
+                    }
+                    
+                    // 攻擊
+                    if (e.key.toLowerCase() === 'j' || e.key.toLowerCase() === 'k') {
+                        this.attack();
+                    }
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+            }
+            
+            update(deltaTime, platforms, enemies, abilityOrbs) {
+                if (!this.alive) return;
+                
+                // 更新計時器
+                if (this.attackTimer > 0) {
+                    this.attackTimer -= deltaTime;
+                    if (this.attackTimer <= 0) {
+                        this.attacking = false;
+                        this.airAttacking = false;
+                    }
+                }
+                
+                if (this.attackCooldown > 0) {
+                    this.attackCooldown -= deltaTime;
+                }
+                
+                if (this.invincibleTimer > 0) {
+                    this.invincibleTimer -= deltaTime;
+                    if (this.invincibleTimer <= 0) {
+                        this.invincible = false;
+                    }
+                }
+                
+                if (this.stunnedTimer > 0) {
+                    this.stunnedTimer -= deltaTime;
+                    if (this.stunnedTimer <= 0) {
+                        this.stunned = false;
+                    }
+                }
+                
+                // 硬直時不能移動
+                if (this.stunned) {
+                    this.applyGravity(deltaTime);
+                    this.move(deltaTime, platforms);
+                    return;
+                }
+                
+                // 水平移動
+                this.handleMovement(deltaTime);
+                
+                // 重力
+                this.applyGravity(deltaTime);
+                
+                // Coyote time
+                if (this.grounded) {
+                    this.coyoteTimer = CONFIG.PLAYER.COYOTE_TIME;
+                    this.hasDoubleJump = PLAYER_STATE.abilities.doubleJump;
+                } else {
+                    this.coyoteTimer -= deltaTime;
+                }
+                
+                // 移動與碰撞
+                this.move(deltaTime, platforms);
+                
+                // 攻擊判定
+                if (this.attacking) {
+                    this.checkAttackHit(enemies);
+                }
+                
+                // 檢查能力球收集
+                this.checkAbilityOrbs(abilityOrbs);
+                
+                // 檢查敵人碰撞
+                this.checkEnemyCollision(enemies);
+            }
+            
+            handleMovement(deltaTime) {
+                const moveLeft = this.keys['a'] || this.keys['arrowleft'];
+                const moveRight = this.keys['d'] || this.keys['arrowright'];
+                
+                if (moveLeft) {
+                    this.vx -= CONFIG.PLAYER.MOVE_ACCELERATION;
+                    this.direction = -1;
+                } else if (moveRight) {
+                    this.vx += CONFIG.PLAYER.MOVE_ACCELERATION;
+                    this.direction = 1;
+                } else {
+                    // 減速
+                    if (this.vx > 0) {
+                        this.vx = Math.max(0, this.vx - CONFIG.PLAYER.MOVE_DECELERATION);
+                    } else if (this.vx < 0) {
+                        this.vx = Math.min(0, this.vx + CONFIG.PLAYER.MOVE_DECELERATION);
+                    }
+                }
+                
+                // 限制最大速度
+                this.vx = Math.max(-CONFIG.PLAYER.MAX_SPEED, 
+                                   Math.min(CONFIG.PLAYER.MAX_SPEED, this.vx));
+            }
+            
+            applyGravity(deltaTime) {
+                this.vy += CONFIG.PLAYER.GRAVITY;
+                this.vy = Math.min(this.vy, CONFIG.PLAYER.MAX_FALL_SPEED);
+            }
+            
+            jump() {
+                if (this.stunned || this.attacking) return;
+                
+                // 正常跳躍或 coyote time
+                if (this.grounded || this.coyoteTimer > 0) {
+                    this.vy = CONFIG.PLAYER.JUMP_FORCE;
+                    this.grounded = false;
+                    this.coyoteTimer = 0;
+                }
+                // 二段跳
+                else if (this.hasDoubleJump && !this.grounded) {
+                    this.vy = CONFIG.PLAYER.DOUBLE_JUMP_FORCE;
+                    this.hasDoubleJump = false;
+                }
+            }
+            
+            attack() {
+                if (this.attackCooldown > 0 || this.stunned) return;
+                
+                this.attacking = true;
+                this.attackTimer = CONFIG.PLAYER.ATTACK_DURATION;
+                this.attackCooldown = CONFIG.PLAYER.ATTACK_COOLDOWN;
+                this.attackDirection = this.direction;
+                
+                // 空中攻擊標記
+                if (!this.grounded) {
+                    this.airAttacking = true;
+                }
+            }
+            
+            checkAttackHit(enemies) {
+                const attackBox = this.getAttackBox();
+                
+                enemies.forEach(enemy => {
+                    if (!enemy.alive) return;
+                    
+                    const enemyBox = {
+                        x: enemy.x,
+                        y: enemy.y,
+                        width: enemy.width,
+                        height: enemy.height
+                    };
+                    
+                    if (Collision.checkAABB(attackBox, enemyBox) && !enemy.justHit) {
+                        enemy.takeDamage(CONFIG.PLAYER.ATTACK_DAMAGE);
+                        enemy.justHit = true;
+                        setTimeout(() => enemy.justHit = false, 100);
+                        
+                        // Pogo 反彈 (空中往下攻擊打到敵人)
+                        if (this.airAttacking && this.vy > 0) {
+                            this.vy = CONFIG.PLAYER.POGO_BOUNCE_FORCE;
+                            this.hasDoubleJump = PLAYER_STATE.abilities.doubleJump; // 恢復二段跳
+                        }
+                    }
+                });
+            }
+            
+            getAttackBox() {
+                return {
+                    x: this.attackDirection > 0 
+                        ? this.x + this.width 
+                        : this.x - CONFIG.PLAYER.ATTACK_WIDTH,
+                    y: this.y + (this.height - CONFIG.PLAYER.ATTACK_HEIGHT) / 2,
+                    width: CONFIG.PLAYER.ATTACK_WIDTH,
+                    height: CONFIG.PLAYER.ATTACK_HEIGHT
+                };
+            }
+            
+            checkEnemyCollision(enemies) {
+                if (this.invincible) return;
+                
+                enemies.forEach(enemy => {
+                    if (!enemy.alive) return;
+                    
+                    const playerBox = { x: this.x, y: this.y, width: this.width, height: this.height };
+                    const enemyBox = { x: enemy.x, y: enemy.y, width: enemy.width, height: enemy.height };
+                    
+                    if (Collision.checkAABB(playerBox, enemyBox)) {
+                        this.takeDamage(enemy.damage, enemy.x + enemy.width / 2);
+                    }
+                });
+            }
+            
+            takeDamage(damage, sourceX) {
+                this.health -= damage;
+                this.invincible = true;
+                this.invincibleTimer = CONFIG.PLAYER.HIT_INVINCIBLE_TIME;
+                this.stunned = true;
+                this.stunnedTimer = CONFIG.PLAYER.HIT_STUN_TIME;
+                
+                // 擊退
+                const knockbackDir = sourceX < this.x ? 1 : -1;
+                this.vx = knockbackDir * CONFIG.PLAYER.HIT_KNOCKBACK;
+                this.vy = CONFIG.PLAYER.JUMP_FORCE * 0.5;
+                
+                if (this.health <= 0) {
+                    this.die();
+                }
+                
+                game.updateHealthUI();
+            }
+            
+            checkAbilityOrbs(orbs) {
+                orbs.forEach(orb => {
+                    if (orb.collected) return;
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(this.x + this.width/2 - orb.x, 2) + 
+                        Math.pow(this.y + this.height/2 - orb.y, 2)
+                    );
+                    
+                    if (distance < CONFIG.ABILITY_ORB.RADIUS + 30) {
+                        orb.collect();
+                    }
+                });
+            }
+            
+            die() {
+                this.alive = false;
+                game.showDeathScreen();
+            }
+            
+            respawn(spawnPoint) {
+                this.x = spawnPoint.x;
+                this.y = spawnPoint.y;
+                this.vx = 0;
+                this.vy = 0;
+                this.health = CONFIG.PLAYER.MAX_HEALTH;
+                this.alive = true;
+                this.invincible = false;
+                this.stunned = false;
+                this.attacking = false;
+                game.updateHealthUI();
+            }
+            
+            move(deltaTime, platforms) {
+                // 水平移動
+                this.x += this.vx;
+                this.checkPlatformCollisionX(platforms);
+                
+                // 垂直移動
+                this.y += this.vy;
+                this.grounded = false;
+                this.checkPlatformCollisionY(platforms);
+            }
+            
+            checkPlatformCollisionX(platforms) {
+                platforms.forEach(platform => {
+                    if (Collision.checkAABB(this, platform)) {
+                        if (this.vx > 0) {
+                            this.x = platform.x - this.width;
+                        } else if (this.vx < 0) {
+                            this.x = platform.x + platform.width;
+                        }
+                        this.vx = 0;
+                    }
+                });
+            }
+            
+            checkPlatformCollisionY(platforms) {
+                platforms.forEach(platform => {
+                    if (Collision.checkAABB(this, platform)) {
+                        if (this.vy > 0) {
+                            // 落地
+                            this.y = platform.y - this.height;
+                            this.vy = 0;
+                            this.grounded = true;
+                        } else if (this.vy < 0) {
+                            // 撞到天花板
+                            this.y = platform.y + platform.height;
+                            this.vy = 0;
+                        }
+                    }
+                });
+            }
+            
+            draw(ctx) {
+                if (!this.alive) return;
+                
+                // 無敵時閃爍
+                if (this.invincible && Math.floor(Date.now() / 100) % 2 === 0) {
+                    ctx.globalAlpha = 0.5;
+                }
+                
+                // 繪製玩家
+                ctx.fillStyle = CONFIG.PLAYER.COLOR;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // 繪製方向指示
+                ctx.fillStyle = '#fff';
+                ctx.fillRect(
+                    this.direction > 0 ? this.x + this.width - 5 : this.x,
+                    this.y + 10,
+                    5,
+                    10
+                );
+                
+                ctx.globalAlpha = 1;
+                
+                // 繪製攻擊框 (debug)
+                if (this.attacking) {
+                    const attackBox = this.getAttackBox();
+                    ctx.strokeStyle = '#ffff00';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(attackBox.x, attackBox.y, attackBox.width, attackBox.height);
+                }
+            }
+        }
+
+        // ========================================
+        // 敵人基底類別
+        // ========================================
+        class Enemy {
+            constructor(x, y, config) {
+                this.x = x;
+                this.y = y;
+                this.width = config.WIDTH;
+                this.height = config.HEIGHT;
+                this.color = config.COLOR;
+                this.speed = config.SPEED;
+                this.maxHealth = config.HEALTH;
+                this.health = config.HEALTH;
+                this.damage = config.DAMAGE;
+                this.alive = true;
+                this.direction = 1;
+                this.vx = 0;
+                this.vy = 0;
+                this.grounded = false;
+                this.justHit = false;
+            }
+            
+            update(deltaTime, platforms, player) {
+                // 子類別實作
+            }
+            
+            applyGravity() {
+                this.vy += CONFIG.PLAYER.GRAVITY * 0.8;
+                this.vy = Math.min(this.vy, CONFIG.PLAYER.MAX_FALL_SPEED);
+            }
+            
+            move(platforms) {
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                this.grounded = false;
+                this.checkPlatformCollision(platforms);
+            }
+            
+            checkPlatformCollision(platforms) {
+                platforms.forEach(platform => {
+                    if (Collision.checkAABB(this, platform)) {
+                        if (this.vy > 0) {
+                            this.y = platform.y - this.height;
+                            this.vy = 0;
+                            this.grounded = true;
+                        } else if (this.vy < 0) {
+                            this.y = platform.y + platform.height;
+                            this.vy = 0;
+                        }
+                        
+                        if (this.vx > 0) {
+                            this.x = platform.x - this.width;
+                            this.direction = -1;
+                        } else if (this.vx < 0) {
+                            this.x = platform.x + platform.width;
+                            this.direction = 1;
+                        }
+                    }
+                });
+            }
+            
+            takeDamage(damage) {
+                this.health -= damage;
+                if (this.health <= 0) {
+                    this.alive = false;
+                }
+            }
+            
+            draw(ctx) {
+                if (!this.alive) return;
+                
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                
+                // 血量條
+                const healthBarWidth = this.width;
+                const healthBarHeight = 4;
+                const healthPercent = this.health / this.maxHealth;
+                
+                ctx.fillStyle = '#000';
+                ctx.fillRect(this.x, this.y - 10, healthBarWidth, healthBarHeight);
+                ctx.fillStyle = '#f00';
+                ctx.fillRect(this.x, this.y - 10, healthBarWidth * healthPercent, healthBarHeight);
+            }
+        }
+
+        // ========================================
+        // 巡邏敵人 - 左右來回走動
+        // ========================================
+        class PatrolEnemy extends Enemy {
+            constructor(x, y, patrolLeft, patrolRight) {
+                super(x, y, CONFIG.ENEMY.PATROL);
+                this.patrolLeft = patrolLeft;
+                this.patrolRight = patrolRight;
+                this.direction = 1;
+            }
+            
+            update(deltaTime, platforms, player) {
+                if (!this.alive) return;
+                
+                // 巡邏邏輯
+                if (this.x <= this.patrolLeft) {
+                    this.direction = 1;
+                } else if (this.x >= this.patrolRight - this.width) {
+                    this.direction = -1;
+                }
+                
+                this.vx = this.speed * this.direction;
+                
+                this.applyGravity();
+                this.move(platforms);
+            }
+        }
+
+        // ========================================
+        // 追擊敵人 - 看到玩家就追過來
+        // ========================================
+        class ChaserEnemy extends Enemy {
+            constructor(x, y, patrolLeft, patrolRight) {
+                super(x, y, CONFIG.ENEMY.CHASER);
+                this.patrolLeft = patrolLeft;
+                this.patrolRight = patrolRight;
+                this.direction = 1;
+                this.chasing = false;
+            }
+            
+            update(deltaTime, platforms, player) {
+                if (!this.alive) return;
+                
+                // 偵測玩家
+                const distanceToPlayer = Math.abs(player.x - this.x);
+                
+                if (distanceToPlayer < CONFIG.ENEMY.CHASER.DETECTION_RANGE && player.alive) {
+                    // 追擊模式
+                    this.chasing = true;
+                    this.direction = player.x > this.x ? 1 : -1;
+                } else {
+                    // 巡邏模式
+                    this.chasing = false;
+                    if (this.x <= this.patrolLeft) {
+                        this.direction = 1;
+                    } else if (this.x >= this.patrolRight - this.width) {
+                        this.direction = -1;
+                    }
+                }
+                
+                this.vx = this.speed * this.direction * (this.chasing ? 1.5 : 1);
+                
+                this.applyGravity();
+                this.move(platforms);
+            }
+            
+            draw(ctx) {
+                super.draw(ctx);
+                
+                // 追擊時顯示驚嘆號
+                if (this.chasing) {
+                    ctx.fillStyle = '#ff0';
+                    ctx.font = '20px Arial';
+                    ctx.fillText('!', this.x + this.width / 2 - 5, this.y - 15);
+                }
+            }
+        }
+
+        // ========================================
+        // 能力球類別
+        // ========================================
+        class AbilityOrb {
+            constructor(type, x, y) {
+                this.type = type;
+                this.x = x;
+                this.y = y;
+                this.radius = CONFIG.ABILITY_ORB.RADIUS;
+                this.collected = false;
+                this.animationOffset = Math.random() * Math.PI * 2;
+            }
+            
+            collect() {
+                this.collected = true;
+                PLAYER_STATE.collectedOrbs.push(this.type);
+                
+                // 解鎖能力
+                switch(this.type) {
+                    case 'doubleJump':
+                        PLAYER_STATE.abilities.doubleJump = true;
+                        game.showAbilityNotification('獲得能力：二段跳！');
+                        break;
+                    // 預留其他能力
+                    case 'dash':
+                        PLAYER_STATE.abilities.dash = true;
+                        game.showAbilityNotification('獲得能力：衝刺！');
+                        break;
+                    case 'wallJump':
+                        PLAYER_STATE.abilities.wallJump = true;
+                        game.showAbilityNotification('獲得能力：牆跳！');
+                        break;
+                }
+            }
+            
+            update(deltaTime) {
+                // 浮動動畫
+                this.animationOffset += deltaTime * 3;
+            }
+            
+            draw(ctx) {
+                if (this.collected) return;
+                
+                const floatOffset = Math.sin(this.animationOffset) * 10;
+                const currentY = this.y + floatOffset;
+                
+                // 外圈光暈
+                const gradient = ctx.createRadialGradient(
+                    this.x, currentY, 0,
+                    this.x, currentY, this.radius * 2
+                );
+                gradient.addColorStop(0, CONFIG.ABILITY_ORB.GLOW_COLOR + '88');
+                gradient.addColorStop(1, CONFIG.ABILITY_ORB.GLOW_COLOR + '00');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(this.x, currentY, this.radius * 2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 核心
+                ctx.fillStyle = CONFIG.ABILITY_ORB.COLOR;
+                ctx.beginPath();
+                ctx.arc(this.x, currentY, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 內圈高光
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(this.x - 5, currentY - 5, this.radius * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // ========================================
+        // 關卡類別 - 管理地圖資料
+        // ========================================
+        class Level {
+            constructor(areaKey) {
+                this.areaKey = areaKey;
+                this.data = LEVEL_DATA.areas[areaKey];
+                this.platforms = this.data.platforms;
+                this.enemies = [];
+                this.abilityOrbs = [];
+                
+                this.loadEnemies();
+                this.loadAbilityOrbs();
+            }
+            
+            loadEnemies() {
+                this.data.enemies.forEach(enemyData => {
+                    let enemy;
+                    if (enemyData.type === 'patrol') {
+                        enemy = new PatrolEnemy(
+                            enemyData.x, 
+                            enemyData.y, 
+                            enemyData.patrolLeft, 
+                            enemyData.patrolRight
+                        );
+                    } else if (enemyData.type === 'chaser') {
+                        enemy = new ChaserEnemy(
+                            enemyData.x, 
+                            enemyData.y, 
+                            enemyData.patrolLeft, 
+                            enemyData.patrolRight
+                        );
+                    }
+                    this.enemies.push(enemy);
+                });
+            }
+            
+            loadAbilityOrbs() {
+                this.data.abilityOrbs.forEach(orbData => {
+                    const orb = new AbilityOrb(orbData.type, orbData.x, orbData.y);
+                    // 檢查是否已收集
+                    if (PLAYER_STATE.collectedOrbs.includes(orbData.type)) {
+                        orb.collected = true;
+                    }
+                    this.abilityOrbs.push(orb);
+                });
+            }
+            
+            update(deltaTime, player) {
+                this.enemies.forEach(enemy => enemy.update(deltaTime, this.platforms, player));
+                this.abilityOrbs.forEach(orb => orb.update(deltaTime));
+            }
+            
+            draw(ctx) {
+                // 繪製平台
+                this.platforms.forEach(platform => {
+                    ctx.fillStyle = CONFIG.PLATFORM.COLOR;
+                    ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+                    
+                    ctx.strokeStyle = CONFIG.PLATFORM.OUTLINE_COLOR;
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+                });
+                
+                // 繪製敵人
+                this.enemies.forEach(enemy => enemy.draw(ctx));
+                
+                // 繪製能力球
+                this.abilityOrbs.forEach(orb => orb.draw(ctx));
+            }
+        }
+
+        // ========================================
+        // 主遊戲類別
+        // ========================================
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.canvas.width = CONFIG.CANVAS_WIDTH;
+                this.canvas.height = CONFIG.CANVAS_HEIGHT;
+                
+                this.lastTime = 0;
+                this.running = true;
+                
+                this.init();
+            }
+            
+            init() {
+                // 載入關卡
+                this.level = new Level('start');
+                
+                // 創建玩家
+                this.player = new Player(
+                    this.level.data.spawnPoint.x,
+                    this.level.data.spawnPoint.y
+                );
+                
+                // 創建相機
+                this.camera = new Camera(this.level.data.bounds);
+                
+                // 設定 UI
+                this.updateHealthUI();
+                this.updateAreaName(this.level.data.name);
+                
+                // 重試按鈕
+                document.getElementById('retry-btn').addEventListener('click', () => {
+                    this.respawn();
+                });
+                
+                // 開始遊戲循環
+                this.gameLoop(0);
+            }
+            
+            gameLoop(currentTime) {
+                if (!this.running) return;
+                
+                const deltaTime = (currentTime - this.lastTime) / 1000;
+                this.lastTime = currentTime;
+                
+                // 限制 deltaTime 避免極端情況
+                const clampedDelta = Math.min(deltaTime, 0.1);
+                
+                this.update(clampedDelta);
+                this.draw();
+                
+                requestAnimationFrame((time) => this.gameLoop(time));
+            }
+            
+            update(deltaTime) {
+                // 更新玩家
+                this.player.update(
+                    deltaTime,
+                    this.level.platforms,
+                    this.level.enemies,
+                    this.level.abilityOrbs
+                );
+                
+                // 更新關卡
+                this.level.update(deltaTime, this.player);
+                
+                // 更新相機
+                this.camera.follow(
+                    this.player,
+                    this.canvas.width,
+                    this.canvas.height
+                );
+            }
+            
+            draw() {
+                // 清空畫布
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 繪製背景視差層
+                this.drawParallaxBackground();
+                
+                // 應用相機變換
+                this.ctx.save();
+                this.camera.apply(this.ctx);
+                
+                // 繪製關卡
+                this.level.draw(this.ctx);
+                
+                // 繪製玩家
+                this.player.draw(this.ctx);
+                
+                // 恢復相機變換
+                this.ctx.restore();
+            }
+            
+            drawParallaxBackground() {
+                CONFIG.PARALLAX_LAYERS.forEach((layer, index) => {
+                    const offsetX = this.camera.x * layer.speed;
+                    const offsetY = this.camera.y * layer.speed * 0.5;
+                    
+                    this.ctx.fillStyle = layer.color;
+                    this.ctx.globalAlpha = layer.alpha;
+                    
+                    // 繪製重複的背景
+                    const patternWidth = this.canvas.width * 1.5;
+                    const patternHeight = this.canvas.height * 1.5;
+                    
+                    for (let x = -patternWidth; x < this.canvas.width + patternWidth; x += patternWidth) {
+                        for (let y = -patternHeight; y < this.canvas.height + patternHeight; y += patternHeight) {
+                            this.ctx.fillRect(
+                                x - (offsetX % patternWidth),
+                                y - (offsetY % patternHeight),
+                                patternWidth,
+                                patternHeight
+                            );
+                        }
+                    }
+                    
+                    this.ctx.globalAlpha = 1;
+                });
+            }
+            
+            updateHealthUI() {
+                const healthContainer = document.getElementById('health');
+                healthContainer.innerHTML = '';
+                
+                for (let i = 0; i < CONFIG.PLAYER.MAX_HEALTH; i++) {
+                    const mask = document.createElement('div');
+                    mask.className = 'health-mask';
+                    if (i >= this.player.health) {
+                        mask.classList.add('empty');
+                    }
+                    healthContainer.appendChild(mask);
+                }
+            }
+            
+            updateAreaName(name) {
+                document.getElementById('area-name').textContent = name;
+            }
+            
+            showDeathScreen() {
+                document.getElementById('death-screen').classList.add('show');
+            }
+            
+            hideDeathScreen() {
+                document.getElementById('death-screen').classList.remove('show');
+            }
+            
+            showAbilityNotification(text) {
+                const notification = document.getElementById('ability-notification');
+                const textElement = document.getElementById('ability-text');
+                
+                textElement.textContent = text;
+                notification.classList.add('show');
+                
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }
+            
+            respawn() {
+                this.hideDeathScreen();
+                
+                // 重置敵人
+                this.level.enemies.forEach(enemy => {
+                    enemy.alive = true;
+                    enemy.health = enemy.maxHealth;
+                });
+                
+                // 重生玩家
+                this.player.respawn(this.level.data.spawnPoint);
+            }
+        }
+
+        // ========================================
+        // 啟動遊戲
+        // ========================================
+        let game;
+        window.addEventListener('load', () => {
+            game = new Game();
+        });
+    </script>
+</body>
+</html>
