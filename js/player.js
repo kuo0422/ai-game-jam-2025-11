@@ -505,13 +505,13 @@ export class Player {
         
         ctx.globalAlpha = 1;
         
-        // 繪製攻擊框 (debug)
-        if (this.attacking) {
-            const attackBox = this.getAttackBox();
-            ctx.strokeStyle = '#ffff00';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(attackBox.x, attackBox.y, attackBox.width, attackBox.height);
-        }
+        // // 繪製攻擊框 (debug) - 已移除
+        // if (this.attacking) {
+        //     const attackBox = this.getAttackBox();
+        //     ctx.strokeStyle = '#ffff00';
+        //     ctx.lineWidth = 2;
+        //     ctx.strokeRect(attackBox.x, attackBox.y, attackBox.width, attackBox.height);
+        // }
     }
     
     /**
