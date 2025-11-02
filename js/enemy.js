@@ -196,8 +196,8 @@ export class SentryEnemy extends Enemy {
 
         // Sprite 系統
         this.spriteManager = new SpriteManager(
-            'Assets/Characters/monster1/metadata.json',
-            'Assets/Characters/monster1/'
+            'Assets/Characters/monster_1/metadata.json',
+            'Assets/Characters/monster_1/'
         );
         this.spriteLoaded = false;
         this.spriteManager.load().then(() => {
@@ -263,19 +263,27 @@ export class SentryEnemy extends Enemy {
 
     fire() {
         if (window.game && window.game.createRayEffect) {
+            // 獲取 Sprite 的實際高度，如果未載入則使用預設值
+            const spriteHeight = this.spriteLoaded ? this.spriteManager.metadata.character.size.height : this.height;
+            // 計算 Sprite 的繪製 Y 座標
+            const drawY = this.y + (this.height - spriteHeight);
+            
             const startX = this.x + this.width / 2;
-            const startY = this.y + this.height / 2 - 10; // 從眼睛位置發射
+            const startY = drawY + spriteHeight * 0.3; // 從 Sprite 頂部向下約 35% 的位置發射，模擬眼睛位置
             window.game.createRayEffect(startX, startY, this.lastPlayerPos.x, this.lastPlayerPos.y, window.game.player);
         }
     }
 
     updateAnimation(deltaTime) {
-        let targetAnimation = 'idle';
-        if (this.state === 'charging') {
-            targetAnimation = 'attack';
-        } else if (this.state === 'attacking' || this.state === 'cooldown') {
-            targetAnimation = 'attack';
-        }
+        // monster_1 的 metadata 中只有 'walk' 動畫。
+        // 我們用 'walk' 來代表所有活動狀態，用第一幀代表待機。
+        let targetAnimation = 'walk';
+
+        // 如果敵人是靜止的 'idle' 狀態，我們讓它停在走路動畫的第一幀
+        if (this.state === 'idle') {
+            this.animationFrame = 0;
+            return; // 不更新動畫時間，保持靜止
+        } 
 
         this.animationTime += deltaTime;
         if (this.animationTime >= this.animationSpeed) {
@@ -292,23 +300,37 @@ export class SentryEnemy extends Enemy {
 
         // 使用 Sprite 繪製
         if (this.spriteLoaded) {
-            const animName = (this.state === 'charging' || this.state === 'attacking' || this.state === 'cooldown') ? 'attack' : 'idle';
+            // 統一使用 'walk' 動畫
+            const animName = 'walk';
             const dir = this.direction > 0 ? 'east' : 'west';
             const frames = this.spriteManager.getAnimationFrames(animName, dir);
-            const image = frames[this.animationFrame] || frames[0];
+            
+            // 確保 animationFrame 不會超出範圍
+            const frameIndex = Math.min(this.animationFrame, frames.length - 1);
+            const image = frames[frameIndex] || frames[0];
+
             if (image) {
                 const drawX = this.x + (this.width - image.width) / 2;
                 const drawY = this.y + (this.height - image.height);
-                ctx.drawImage(image, drawX, drawY);
+                // 修正：傳入圖片的寬度和高度進行繪製
+                ctx.drawImage(image, drawX, drawY, image.width, image.height);
+
+                // 直接在這裡繪製血條，並基於 Sprite 的位置
+                const healthBarWidth = this.width;
+                const healthBarHeight = 4;
+                const healthPercent = this.health / this.maxHealth;
+                
+                ctx.fillStyle = '#000';
+                ctx.fillRect(this.x, drawY - 10, healthBarWidth, healthBarHeight);
+                ctx.fillStyle = '#f00';
+                ctx.fillRect(this.x, drawY - 10, healthBarWidth * healthPercent, healthBarHeight);
             }
         } else {
-            // 備用繪製
+            // Sprite 未載入時的備用繪製
             ctx.fillStyle = this.color;
             ctx.fillRect(this.x, this.y, this.width, this.height);
         }
 
-        // 繪製血條
-        super.draw(ctx);
     }
 }
 
