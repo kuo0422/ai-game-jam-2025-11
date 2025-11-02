@@ -1,0 +1,66 @@
+# ========================================
+# 資產文件 - 音樂與圖片
+# ========================================
+
+# 音訊文件
+Assets/Audio/
+*.mp3
+*.wav
+*.ogg
+*.m4a
+*.aac
+*.flac
+
+# 圖片文件
+Assets/**/*.png
+Assets/**/*.jpg
+Assets/**/*.jpeg
+Assets/**/*.gif
+Assets/**/*.bmp
+Assets/**/*.webp
+Assets/**/*.svg
+Assets/**/*.ico
+Assets/**/*.tiff
+Assets/**/*.tif
+
+# 視頻文件（如有）
+Assets/**/*.mp4
+Assets/**/*.avi
+Assets/**/*.mov
+Assets/**/*.webm
+
+# ========================================
+# 系統文件
+# ========================================
+
+# OS 生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# 編輯器文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# 日誌文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 臨時文件
+*.tmp
+*.temp
+.cache/
+
