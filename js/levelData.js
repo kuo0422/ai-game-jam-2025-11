@@ -7,8 +7,8 @@ export const LEVEL_DATA = {
             name: '遺忘的十字路',
             // ⭐ 超大地圖範圍 - 5000 x 2400 像素
             bounds: { x: 0, y: 0, width: 5000, height: 2400 },
-            // spawnPoint: { x: 100, y: 2200 },
-            spawnPoint: { x: 500, y: 1200 }, // 上面監測點
+            spawnPoint: { x: 100, y: 2200 },
+            // spawnPoint: { x: 500, y: 1200 }, // 上面監測點
             
             platforms: [
                 // ==================== 左下角：起始區域 (x: 0-1000, y: 2000-2400) ====================
@@ -189,20 +189,34 @@ export const LEVEL_DATA = {
                 // // 垂直爬升區
                 { type: 'sentry', x: 700, y: 1602 }, // 在高層平台上
                 
+                // 隱藏區 - 左上區域
+                { type: 'sentry', x: 550, y: 1002 }, // 在最高處平台上
+                
                 // // 中間探索區
                 { type: 'sentry', x: 2800, y: 1852 }, // 在平台6上
                 
                 // // 能力球守衛
                 // { type: 'chaser', x: 1750, y: 1500, patrolLeft: 1700, patrolRight: 1850 },
                 
-                // // 挑戰區
-                // { type: 'chaser', x: 3150, y: 1750, patrolLeft: 3100, patrolRight: 3400 },
-                // { type: 'chaser', x: 3550, y: 1700, patrolLeft: 3500, patrolRight: 3700 },
+                // 挑戰區 - 右中區域 (x: 3000-4000)
+                { type: 'sentry', x: 3150, y: 1852 }, // 在挑戰區地面上
+                { type: 'sentry', x: 3200, y: 1752 }, // 在難跳的平台1上
+                { type: 'sentry', x: 3400, y: 1652 }, // 在難跳的平台2上
+                { type: 'sentry', x: 3600, y: 1602 }, // 在難跳的平台3上
+                { type: 'sentry', x: 3800, y: 1852 }, // 在挑戰區地面右側
                 
                 // // Boss 通道
                 { type: 'sentry', x: 2200, y: 1102 }, // 在Boss門前平台上
                 
-                // // Boss 房守衛
+                // Boss 房守衛 - 右上區域 (x: 3000-5000)
+                { type: 'sentry', x: 3400, y: 1302 }, // 在Boss房地面左側
+                { type: 'sentry', x: 3500, y: 1202 }, // 在Boss房平台1上
+                { type: 'sentry', x: 3900, y: 1202 }, // 在Boss房平台2上
+                { type: 'sentry', x: 4400, y: 1202 }, // 在Boss房平台3上
+                { type: 'sentry', x: 4700, y: 1302 }, // 在Boss房地面右側
+                
+                // 能力球守衛 - 深坑區域
+                { type: 'sentry', x: 3800, y: 2302 }, // 在能力球前方守衛
             ],
             
             // ========================================
