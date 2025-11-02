@@ -329,7 +329,7 @@ export class FireballEffect {
         
         // 火球基本屬性
         this.radius = 12;
-        this.speed = 300; // 像素/秒
+        this.speed = 600; // 像素/秒
         this.maxDistance = 400; // 最大飛行距離
         this.distanceTraveled = 0;
         
