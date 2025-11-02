@@ -7,7 +7,7 @@ export const LEVEL_DATA = {
             name: '遺忘的十字路',
             // ⭐ 超大地圖範圍 - 5000 x 2400 像素
             bounds: { x: 0, y: 0, width: 5000, height: 2400 },
-            spawnPoint: { x: 200, y: 2200 },
+            spawnPoint: { x: 100, y: 2200 },
             // spawnPoint: { x: 500, y: 1200 }, // 上面監測點
             
             platforms: [
