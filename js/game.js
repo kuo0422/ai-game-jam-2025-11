@@ -25,6 +25,14 @@ export class Game {
         // 特效系統
         this.effects = [];
         
+        // 載入背景圖片
+        this.backgroundImage = new Image();
+        this.backgroundImage.src = 'Assets/background/bg-1.png';
+        this.backgroundLoaded = false;
+        this.backgroundImage.onload = () => {
+            this.backgroundLoaded = true;
+        };
+        
         this.init();
     }
     
@@ -129,30 +137,65 @@ export class Game {
     }
     
     drawParallaxBackground() {
-        CONFIG.PARALLAX_LAYERS.forEach((layer, index) => {
-            const offsetX = this.camera.x * layer.speed;
-            const offsetY = this.camera.y * layer.speed * 0.5;
+        if (this.backgroundLoaded) {
+            // 繪製背景圖片作為視差背景
+            const offsetX = this.camera.x * 0.3; // 視差速度
+            const offsetY = this.camera.y * 0.15; // 較慢的垂直視差
             
-            this.ctx.fillStyle = layer.color;
-            this.ctx.globalAlpha = layer.alpha;
+            // 計算背景圖片的縮放和位置
+            const scale = Math.max(
+                this.canvas.width / this.backgroundImage.width,
+                this.canvas.height / this.backgroundImage.height
+            ) * 1.2; // 稍微放大以確保覆蓋整個畫面
             
-            // 繪製重複的背景
-            const patternWidth = this.canvas.width * 1.5;
-            const patternHeight = this.canvas.height * 1.5;
+            const bgWidth = this.backgroundImage.width * scale;
+            const bgHeight = this.backgroundImage.height * scale;
             
-            for (let x = -patternWidth; x < this.canvas.width + patternWidth; x += patternWidth) {
-                for (let y = -patternHeight; y < this.canvas.height + patternHeight; y += patternHeight) {
-                    this.ctx.fillRect(
-                        x - (offsetX % patternWidth),
-                        y - (offsetY % patternHeight),
-                        patternWidth,
-                        patternHeight
+            // 計算重複繪製的次數
+            const startX = Math.floor(-offsetX / bgWidth) - 1;
+            const endX = Math.ceil((this.canvas.width - offsetX) / bgWidth) + 1;
+            const startY = Math.floor(-offsetY / bgHeight) - 1;
+            const endY = Math.ceil((this.canvas.height - offsetY) / bgHeight) + 1;
+            
+            // 繪製重複的背景圖片以創建無縫效果
+            for (let x = startX; x <= endX; x++) {
+                for (let y = startY; y <= endY; y++) {
+                    this.ctx.drawImage(
+                        this.backgroundImage,
+                        x * bgWidth - (offsetX % bgWidth),
+                        y * bgHeight - (offsetY % bgHeight),
+                        bgWidth,
+                        bgHeight
                     );
                 }
             }
-            
-            this.ctx.globalAlpha = 1;
-        });
+        } else {
+            // 背景圖片還沒載入完成時，使用原本的視差顏色層
+            CONFIG.PARALLAX_LAYERS.forEach((layer, index) => {
+                const offsetX = this.camera.x * layer.speed;
+                const offsetY = this.camera.y * layer.speed * 0.5;
+                
+                this.ctx.fillStyle = layer.color;
+                this.ctx.globalAlpha = layer.alpha;
+                
+                // 繪製重複的背景
+                const patternWidth = this.canvas.width * 1.5;
+                const patternHeight = this.canvas.height * 1.5;
+                
+                for (let x = -patternWidth; x < this.canvas.width + patternWidth; x += patternWidth) {
+                    for (let y = -patternHeight; y < this.canvas.height + patternHeight; y += patternHeight) {
+                        this.ctx.fillRect(
+                            x - (offsetX % patternWidth),
+                            y - (offsetY % patternHeight),
+                            patternWidth,
+                            patternHeight
+                        );
+                    }
+                }
+                
+                this.ctx.globalAlpha = 1;
+            });
+        }
     }
     
     updateHealthUI() {
