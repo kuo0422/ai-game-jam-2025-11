@@ -20,6 +20,10 @@ export class Player {
         this.health = CONFIG.PLAYER.MAX_HEALTH;
         this.alive = true;
         
+        // 經驗值系統
+        this.experience = 0;
+        this.level = 1;
+        
         // 跳躍相關
         this.canJump = true;
         this.hasDoubleJump = false;
@@ -64,7 +68,7 @@ export class Player {
         });
     }
     
-    update(deltaTime, platforms, enemies, abilityOrbs) {
+    update(deltaTime, platforms, enemies, abilityOrbs, experienceOrbs) {
         if (!this.alive) return;
         
         // 更新計時器
@@ -126,6 +130,8 @@ export class Player {
         // 檢查能力球收集
         this.checkAbilityOrbs(abilityOrbs);
         
+        // 經驗值收集在 level.js 中處理（更高效）
+        
         // 檢查敵人碰撞
         this.checkEnemyCollision(enemies);
     }
@@ -186,6 +192,14 @@ export class Player {
         // 空中攻擊標記
         if (!this.grounded) {
             this.airAttacking = true;
+        }
+        
+        // 通知遊戲創建斬擊特效
+        if (window.game && window.game.createSlashEffect) {
+            const attackBox = this.getAttackBox();
+            const centerX = attackBox.x + attackBox.width / 2;
+            const centerY = attackBox.y + attackBox.height / 2;
+            window.game.createSlashEffect(centerX, centerY, this.attackDirection);
         }
     }
     
@@ -277,6 +291,34 @@ export class Player {
                 orb.collect();
             }
         });
+    }
+    
+    addExperience(amount) {
+        this.experience += amount;
+        
+        // 檢查升級
+        this.checkLevelUp();
+        
+        // 更新 UI
+        if (window.game && window.game.updateExpUI) {
+            window.game.updateExpUI();
+        }
+    }
+    
+    checkLevelUp() {
+        if (this.level >= CONFIG.PLAYER_EXP.MAX_LEVEL) {
+            return; // 已達最高等級
+        }
+        
+        const expRequired = CONFIG.PLAYER_EXP.EXP_PER_LEVEL[this.level] || 999;
+        
+        if (this.experience >= expRequired) {
+            this.level++;
+            // 升級效果（可以添加更多功能）
+            if (window.game && window.game.onPlayerLevelUp) {
+                window.game.onPlayerLevelUp(this.level);
+            }
+        }
     }
     
     die() {

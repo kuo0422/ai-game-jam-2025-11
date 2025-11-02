@@ -6,6 +6,7 @@ import { Camera } from './camera.js';
 import { Player } from './player.js';
 import { Level } from './level.js';
 import { AudioManager } from './audio.js';
+import { SlashEffect } from './effects.js';
 
 export class Game {
     constructor() {
@@ -20,6 +21,9 @@ export class Game {
         
         // 初始化音訊管理器
         this.audio = new AudioManager();
+        
+        // 特效系統
+        this.effects = [];
         
         this.init();
     }
@@ -40,6 +44,7 @@ export class Game {
         // 設定 UI
         this.updateHealthUI();
         this.updateAreaName(this.level.data.name);
+        this.updateExpUI();
         
         // 播放 BGM
         this.audio.playBGM('Assets/Audio/BGM/Gameplay/Sacred Hollow.mp3', true);
@@ -83,6 +88,10 @@ export class Game {
         // 更新關卡
         this.level.update(deltaTime, this.player);
         
+        // 更新特效
+        this.effects.forEach(effect => effect.update(deltaTime));
+        this.effects = this.effects.filter(effect => effect.active);
+        
         // 更新相機
         this.camera.follow(
             this.player,
@@ -107,6 +116,9 @@ export class Game {
         
         // 繪製玩家
         this.player.draw(this.ctx);
+        
+        // 繪製特效（在玩家上方，確保可見）
+        this.effects.forEach(effect => effect.draw(this.ctx));
         
         // 恢復相機變換
         this.ctx.restore();
@@ -188,5 +200,40 @@ export class Game {
         
         // 重生玩家
         this.player.respawn(this.level.data.spawnPoint);
+    }
+    
+    // 創建斬擊特效
+    createSlashEffect(x, y, direction) {
+        const effect = new SlashEffect(x, y, direction);
+        this.effects.push(effect);
+    }
+    
+    // 更新經驗值 UI
+    updateExpUI() {
+        // 如果 UI 元素存在則更新
+        let expElement = document.getElementById('exp-display');
+        if (!expElement) {
+            expElement = document.createElement('div');
+            expElement.id = 'exp-display';
+            expElement.style.cssText = 'position: absolute; top: 60px; left: 20px; color: #fff; font-size: 16px; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);';
+            document.getElementById('ui').appendChild(expElement);
+        }
+        
+        const player = this.player;
+        const currentLevelExp = CONFIG.PLAYER_EXP.EXP_PER_LEVEL[player.level - 1] || 0;
+        const nextLevelExp = CONFIG.PLAYER_EXP.EXP_PER_LEVEL[player.level] || 999;
+        const currentExp = player.experience - currentLevelExp;
+        const neededExp = nextLevelExp - currentLevelExp;
+        
+        expElement.textContent = `Lv.${player.level} | EXP: ${currentExp}/${neededExp}`;
+    }
+    
+    // 玩家升級事件
+    onPlayerLevelUp(newLevel) {
+        // 可以添加升級特效或通知
+        if (this.showAbilityNotification) {
+            this.showAbilityNotification(`升級！等級 ${newLevel}`);
+        }
+        this.updateExpUI();
     }
 }
