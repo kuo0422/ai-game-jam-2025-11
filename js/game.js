@@ -131,13 +131,19 @@ export class Game {
     gameLoop(currentTime) {
         if (!this.running) return;
         
-        const deltaTime = (currentTime - this.lastTime) / 1000;
+        // 初始化 lastTime
+        if (this.lastTime === 0) {
+            this.lastTime = currentTime;
+        }
+        
+        // 計算 deltaTime（秒），限制最大值避免跳幀
+        const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1);
         this.lastTime = currentTime;
         
-        // 限制 deltaTime 避免極端情況
-        const clampedDelta = Math.min(deltaTime, 0.1);
+        // 固定時間步長，確保物理計算穩定
+        const fixedDelta = Math.min(deltaTime, 1/30); // 最低30fps
         
-        this.update(clampedDelta);
+        this.update(fixedDelta);
         this.draw();
         
         requestAnimationFrame((time) => this.gameLoop(time));

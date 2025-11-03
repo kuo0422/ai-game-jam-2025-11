@@ -250,8 +250,11 @@ export class Player {
         const moveLeft = this.keys['a'] || this.keys['arrowleft'];
         const moveRight = this.keys['d'] || this.keys['arrowright'];
 
-        const accel = this.grounded ? CONFIG.PLAYER.MOVE_ACCELERATION : CONFIG.PLAYER.AIR_MOVE_ACCELERATION;
-        const decel = this.grounded ? CONFIG.PLAYER.MOVE_DECELERATION : CONFIG.PLAYER.AIR_MOVE_DECELERATION;
+        // 使用 60fps 作為基準幀率
+        const frameMultiplier = deltaTime * 60;
+        
+        const accel = (this.grounded ? CONFIG.PLAYER.MOVE_ACCELERATION : CONFIG.PLAYER.AIR_MOVE_ACCELERATION) * frameMultiplier;
+        const decel = (this.grounded ? CONFIG.PLAYER.MOVE_DECELERATION : CONFIG.PLAYER.AIR_MOVE_DECELERATION) * frameMultiplier;
         
         if (moveLeft) {
             this.vx -= accel;
@@ -274,7 +277,9 @@ export class Player {
     }
     
     applyGravity(deltaTime) {
-        this.vy += CONFIG.PLAYER.GRAVITY;
+        // 使用 60fps 作為基準幀率
+        const frameMultiplier = deltaTime * 60;
+        this.vy += CONFIG.PLAYER.GRAVITY * frameMultiplier;
         this.vy = Math.min(this.vy, CONFIG.PLAYER.MAX_FALL_SPEED);
     }
     

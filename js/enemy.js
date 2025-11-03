@@ -33,14 +33,18 @@ export class Enemy {
         // 子類別實作
     }
     
-    applyGravity() {
-        this.vy += CONFIG.PLAYER.GRAVITY * 0.8;
+    applyGravity(deltaTime) {
+        // 使用 60fps 作為基準幀率
+        const frameMultiplier = deltaTime ? deltaTime * 60 : 1;
+        this.vy += CONFIG.PLAYER.GRAVITY * 0.8 * frameMultiplier;
         this.vy = Math.min(this.vy, CONFIG.PLAYER.MAX_FALL_SPEED);
     }
     
-    move(platforms) {
-        this.x += this.vx;
-        this.y += this.vy;
+    move(deltaTime, platforms) {
+        // 使用 60fps 作為基準幀率
+        const frameMultiplier = deltaTime ? deltaTime * 60 : 1;
+        this.x += this.vx * frameMultiplier;
+        this.y += this.vy * frameMultiplier;
         
         this.grounded = false;
         this.checkPlatformCollision(platforms);
@@ -132,6 +136,9 @@ export class PatrolEnemy extends Enemy {
     update(deltaTime, platforms, player) {
         if (!this.alive) return;
         
+        // 使用 60fps 作為基準幀率
+        const frameMultiplier = deltaTime * 60;
+        
         // 巡邏邏輯
         if (this.x <= this.patrolLeft) {
             this.direction = 1;
@@ -141,8 +148,8 @@ export class PatrolEnemy extends Enemy {
         
         this.vx = this.speed * this.direction;
         
-        this.applyGravity();
-        this.move(platforms);
+        this.applyGravity(deltaTime);
+        this.move(deltaTime, platforms);
     }
 }
 
@@ -160,6 +167,9 @@ export class ChaserEnemy extends Enemy {
     
     update(deltaTime, platforms, player) {
         if (!this.alive) return;
+        
+        // 使用 60fps 作為基準幀率
+        const frameMultiplier = deltaTime * 60;
         
         // 偵測玩家
         const distanceToPlayer = Math.abs(player.x - this.x);
@@ -180,8 +190,8 @@ export class ChaserEnemy extends Enemy {
         
         this.vx = this.speed * this.direction * (this.chasing ? 1.5 : 1);
         
-        this.applyGravity();
-        this.move(platforms);
+        this.applyGravity(deltaTime);
+        this.move(deltaTime, platforms);
     }
     
     draw(ctx) {
@@ -229,8 +239,8 @@ export class SentryEnemy extends Enemy {
     update(deltaTime, platforms, player) {
         if (!this.alive) return;
 
-        this.applyGravity();
-        this.move(platforms);
+        this.applyGravity(deltaTime);
+        this.move(deltaTime, platforms);
 
         const distanceToPlayer = Math.hypot(player.x - this.x, player.y - this.y);
         const playerCenter = { x: player.x + player.width / 2, y: player.y + player.height / 2 };
