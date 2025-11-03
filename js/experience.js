@@ -40,16 +40,19 @@ export class ExperienceOrb {
             return;
         }
         
+        // 使用 60fps 作為基準幀率
+        const frameMultiplier = deltaTime * 60;
+        
         // 初始掉落效果
         if (!this.collecting && Math.abs(this.vy) > 0.1) {
-            this.vy += this.gravity;
-            this.x += this.vx * deltaTime;
-            this.y += this.vy * deltaTime;
+            this.vy += this.gravity * frameMultiplier;
+            this.x += this.vx * frameMultiplier;
+            this.y += this.vy * frameMultiplier;
             
             // 減速
-            this.vx *= 0.9;
+            this.vx *= Math.pow(0.9, frameMultiplier);
             if (Math.abs(this.vy) > 0.1) {
-                this.vy *= 0.95;
+                this.vy *= Math.pow(0.95, frameMultiplier);
             } else {
                 this.vy = 0;
                 this.vx = 0;
@@ -69,8 +72,8 @@ export class ExperienceOrb {
                 const dirX = dx / distance;
                 const dirY = dy / distance;
                 
-                this.x += dirX * this.collectionSpeed * deltaTime;
-                this.y += dirY * this.collectionSpeed * deltaTime;
+                this.x += dirX * this.collectionSpeed * frameMultiplier;
+                this.y += dirY * this.collectionSpeed * frameMultiplier;
                 
                 // 如果非常接近玩家，標記為已收集
                 if (distance < 10) {
