@@ -17,9 +17,21 @@ export class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');
         this.ctx = this.canvas.getContext('2d');
-        
-        this.canvas.width = CONFIG.CANVAS_WIDTH;
-        this.canvas.height = CONFIG.CANVAS_HEIGHT;
+        // 支援高 DPI 顯示器：我們維持「邏輯（CSS）寬高」不變，
+        // 但將畫布的 backing store 設為 devicePixelRatio 倍數，並在 context 上做縮放。
+        this.dpr = window.devicePixelRatio || 1;
+        this.logicalWidth = CONFIG.CANVAS_WIDTH;
+        this.logicalHeight = CONFIG.CANVAS_HEIGHT;
+
+        // 設定 CSS 尺寸（邏輯像素）以控制畫面佈局
+        this.canvas.style.width = this.logicalWidth + 'px';
+        this.canvas.style.height = this.logicalHeight + 'px';
+
+        // 設定 backing store 大小（物理像素）並縮放 context
+        this.canvas.width = Math.max(1, Math.floor(this.logicalWidth * this.dpr));
+        this.canvas.height = Math.max(1, Math.floor(this.logicalHeight * this.dpr));
+        // reset any transform and apply DPR scaling so drawing calls use logical pixels
+        this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
         
         this.lastTime = 0;
         this.running = false; // 遊戲開始時不運行
@@ -41,6 +53,40 @@ export class Game {
         
         // 設置開始介面
         this.setupStartScreen();
+
+        // 對顯示尺寸做自動調整（填滿視窗但保留長寬比），並在視窗大小改變時更新
+        this.resizeDisplay();
+        window.addEventListener('resize', () => this.resizeDisplay());
+    }
+
+    /**
+     * 調整 canvas 的顯示大小（CSS 大小），同時保持邏輯解析度不變。
+     * 這樣遊戲世界仍然使用固定的邏輯像素（CONFIG.CANVAS_*），
+     * 但畫面會以最佳比例在不同大小與高解析度的螢幕上顯示且置中。
+     */
+    resizeDisplay() {
+        try {
+            const vw = window.innerWidth;
+            const vh = window.innerHeight;
+            const scale = Math.min(vw / this.logicalWidth, vh / this.logicalHeight);
+
+            const displayW = Math.floor(this.logicalWidth * scale);
+            const displayH = Math.floor(this.logicalHeight * scale);
+
+            // 設定 CSS 大小（顯示大小）
+            this.canvas.style.width = displayW + 'px';
+            this.canvas.style.height = displayH + 'px';
+
+                // 清理定位屬性，佈局由 CSS 的 left-column 處理
+                this.canvas.style.position = '';
+                this.canvas.style.left = '';
+                this.canvas.style.top = '';
+                this.canvas.style.transform = '';
+
+            // 注意：不要把 #ui 與 canvas 同步位置，讓 #controls-panel 可以固定在視窗右側
+        } catch (e) {
+            console.warn('resizeDisplay 發生錯誤', e);
+        }
     }
     
     setupStartScreen() {
@@ -78,6 +124,10 @@ export class Game {
         console.log('遊戲開始');
         this.gameStarted = true;
         this.running = true;
+        // 顯示右側操作區
+        const right = document.getElementById('right-column');
+        if (right) right.classList.remove('hidden');
+
         this.init();
     }
     
@@ -96,14 +146,15 @@ export class Game {
             this.level.data.spawnPoint.x,
             this.level.data.spawnPoint.y
         );
-        
+
         // 創建相機
         this.camera = new Camera(this.level.data.bounds);
-        
+
         // 創建環境氛圍系統
+        // 傳遞邏輯尺寸給氛圍系統 / 相機等，內部都以邏輯像素為單位
         this.atmosphere = new Atmosphere(
-            this.canvas.width,
-            this.canvas.height,
+            this.logicalWidth,
+            this.logicalHeight,
             this.level.data.bounds
         );
         
@@ -189,10 +240,11 @@ export class Game {
         this.effects = this.effects.filter(effect => effect.active);
         
         // 更新相機
+        // Camera 也使用邏輯尺寸（與畫布 CSS 尺寸一致）
         this.camera.follow(
             this.player,
-            this.canvas.width,
-            this.canvas.height
+            this.logicalWidth,
+            this.logicalHeight
         );
         
         // 更新區域名稱（根據玩家位置）
@@ -200,8 +252,8 @@ export class Game {
     }
     
     draw() {
-        // 清空畫布
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    // 清空畫布（使用邏輯尺寸）
+    this.ctx.clearRect(0, 0, this.logicalWidth, this.logicalHeight);
         
         // 繪製背景視差層
         this.drawParallaxBackground();
@@ -257,8 +309,8 @@ export class Game {
             
             // 計算背景圖片的縮放和位置
             const scale = Math.max(
-                this.canvas.width / this.backgroundImage.width,
-                this.canvas.height / this.backgroundImage.height
+                this.logicalWidth / this.backgroundImage.width,
+                this.logicalHeight / this.backgroundImage.height
             ) * 1.2; // 稍微放大以確保覆蓋整個畫面
             
             const bgWidth = this.backgroundImage.width * scale;
@@ -266,9 +318,9 @@ export class Game {
             
             // 計算重複繪製的次數
             const startX = Math.floor(-offsetX / bgWidth) - 1;
-            const endX = Math.ceil((this.canvas.width - offsetX) / bgWidth) + 1;
+            const endX = Math.ceil((this.logicalWidth - offsetX) / bgWidth) + 1;
             const startY = Math.floor(-offsetY / bgHeight) - 1;
-            const endY = Math.ceil((this.canvas.height - offsetY) / bgHeight) + 1;
+            const endY = Math.ceil((this.logicalHeight - offsetY) / bgHeight) + 1;
             
             // 繪製重複的背景圖片以創建無縫效果
             for (let x = startX; x <= endX; x++) {
@@ -292,11 +344,11 @@ export class Game {
                 this.ctx.globalAlpha = layer.alpha;
                 
                 // 繪製重複的背景
-                const patternWidth = this.canvas.width * 1.5;
-                const patternHeight = this.canvas.height * 1.5;
-                
-                for (let x = -patternWidth; x < this.canvas.width + patternWidth; x += patternWidth) {
-                    for (let y = -patternHeight; y < this.canvas.height + patternHeight; y += patternHeight) {
+                const patternWidth = this.logicalWidth * 1.5;
+                const patternHeight = this.logicalHeight * 1.5;
+
+                for (let x = -patternWidth; x < this.logicalWidth + patternWidth; x += patternWidth) {
+                    for (let y = -patternHeight; y < this.logicalHeight + patternHeight; y += patternHeight) {
                         this.ctx.fillRect(
                             x - (offsetX % patternWidth),
                             y - (offsetY % patternHeight),
@@ -346,16 +398,31 @@ export class Game {
     }
     
     showDeathScreen() {
+        const right = document.getElementById('right-column');
+        if (right) right.classList.add('hidden');
         document.getElementById('death-screen').classList.add('show');
     }
     
     hideDeathScreen() {
+        const right = document.getElementById('right-column');
+        if (right) right.classList.remove('hidden');
         document.getElementById('death-screen').classList.remove('show');
     }
     
     showVictory() {
         console.log('顯示勝利畫面');
         this.running = false; // 停止遊戲循環
+        
+        // Get exp-display before hiding the right column
+        const expDisplay = document.getElementById('exp-display');
+        if (expDisplay) {
+            // Move exp display behind the victory screen
+            expDisplay.style.zIndex = '-1';  // Below the victory screen
+        }
+        
+        const right = document.getElementById('right-column');
+        if (right) right.classList.add('hidden');
+        
         const victoryScreen = document.getElementById('victory-screen');
         victoryScreen.classList.add('show');
         
@@ -377,17 +444,44 @@ export class Game {
     hideVictoryScreen() {
         const victoryScreen = document.getElementById('victory-screen');
         victoryScreen.classList.remove('show');
+        const right = document.getElementById('right-column');
+        if (right) right.classList.remove('hidden');
     }
     
     restartGame() {
-        // 隱藏勝利畫面
+        // 隱藏勝利畫面並顯示控制面板
         this.hideVictoryScreen();
-        
-        // 重置玩家狀態
+
+        // 重置玩家狀態（能力、收集物等）
         PLAYER_STATE.reset();
-        
-        // 重新初始化遊戲
+
+        // Reset exp display to normal position
+        const expDisplay = document.getElementById('exp-display');
+        if (expDisplay) {
+            expDisplay.style.zIndex = '';  // Reset to default
+        }
+
+        // Stop audio and clear transient systems
+        if (this.audio && typeof this.audio.stopBGM === 'function') {
+            this.audio.stopBGM();
+        }
+
+        // 清理現有玩家的輸入監聽器（如果有）
+        if (this.player && typeof this.player.destroy === 'function') {
+            this.player.destroy();
+        }
+
+        // Clear transient runtime state
+        this.effects = [];
+        this.lastTime = 0;
+
+        // 重新初始化遊戲物件：清空 references，讓 init() 重新建立全新實例
         this.running = true;
+        this.level = null;
+        this.player = null;
+        this.camera = null;
+
+        // 重新初始化所有遊戲對象（Level、Player、Camera、Atmosphere 等）
         this.init();
     }
     

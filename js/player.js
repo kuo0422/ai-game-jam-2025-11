@@ -73,30 +73,46 @@ export class Player {
     }
     
     setupInput() {
-        window.addEventListener('keydown', (e) => {
+        // bind handlers so we can remove them later when destroying the player
+        this._keydownHandler = (e) => {
             this.keys[e.key.toLowerCase()] = true;
-            
+
             // 跳躍
             if (e.key === ' ' || e.key.toLowerCase() === 'w') {
                 this.jump();
             }
-            
+
             // 攻擊 - J鍵：火球，K鍵：斬擊
             if (e.key.toLowerCase() === 'k') {
                 this.attackSlash();
             } else if (e.key.toLowerCase() === 'j') {
                 this.attackFireball();
             }
-            
+
             // 互動 - E鍵
             if (e.key.toLowerCase() === 'e') {
                 this.interact();
             }
-        });
-        
-        window.addEventListener('keyup', (e) => {
+        };
+
+        this._keyupHandler = (e) => {
             this.keys[e.key.toLowerCase()] = false;
-        });
+        };
+
+        window.addEventListener('keydown', this._keydownHandler);
+        window.addEventListener('keyup', this._keyupHandler);
+    }
+
+    // 移除在 constructor 中註冊的輸入監聽器
+    destroy() {
+        if (this._keydownHandler) {
+            window.removeEventListener('keydown', this._keydownHandler);
+            this._keydownHandler = null;
+        }
+        if (this._keyupHandler) {
+            window.removeEventListener('keyup', this._keyupHandler);
+            this._keyupHandler = null;
+        }
     }
     
     /**
@@ -505,12 +521,15 @@ export class Player {
     }
     
     move(deltaTime, platforms) {
-        // 水平移動
-        this.x += this.vx;
+        // 使用 frameMultiplier 與其他更新保持一致（將速度視為每 60 更新單位）
+        const frameMultiplier = deltaTime * 60;
+
+        // 水平移動（考慮 delta）
+        this.x += this.vx * frameMultiplier;
         this.checkPlatformCollisionX(platforms);
         
-        // 垂直移動
-        this.y += this.vy;
+        // 垂直移動（考慮 delta）
+        this.y += this.vy * frameMultiplier;
         this.grounded = false;
         this.checkPlatformCollisionY(platforms);
     }
