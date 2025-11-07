@@ -10,9 +10,39 @@ body {
     font-family: 'Arial', sans-serif;
 }
 
+/* 兩欄佈局：左側遊戲，右側黑色操作區 */
+#layout {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+}
+
+#left-column {
+    flex: 1 1 auto;
+    position: relative; /* 讓 #ui 的絕對定位基於此 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000; /* 保持背景黑 */
+}
+
+#right-column {
+    width: 360px; /* 固定寬度的操作區 */
+    background: #000; /* 黑色底 */
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 40px;
+}
+
+.hidden { display: none !important; }
+
 #gameCanvas {
     display: block;
     background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1e 100%);
+    /* 讓 canvas 在左欄中置中（left-column 的 flex 會處理） */
+    max-width: 100%;
+    max-height: 100%;
 }
 
 #ui {
@@ -55,11 +85,9 @@ body {
     display: none; /* 隱藏區域名稱 */
 }
 
-/* 右側操作提示面板 */
+/* 操作提示面板，放在右欄內 */
 #controls-panel {
-    position: absolute;
-    top: 80px;
-    right: 20px;
+    position: relative;
     width: 220px;
     background: linear-gradient(135deg, rgba(30, 30, 60, 0.9) 0%, rgba(50, 20, 80, 0.9) 100%);
     border: 2px solid rgba(138, 43, 226, 0.6);
@@ -70,7 +98,7 @@ body {
         0 4px 15px rgba(0, 0, 0, 0.6),
         inset 0 0 20px rgba(138, 43, 226, 0.1);
     backdrop-filter: blur(5px);
-    pointer-events: none;
+    pointer-events: all; /* 允許滑鼠互動（例如 hover） */
 }
 
 .panel-title {
