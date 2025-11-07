@@ -67,17 +67,29 @@ export class ExperienceOrb {
                 this.collecting = true;
             }
             
-            // 被吸引向玩家
+            // 被吸引向玩家（使用秒為單位的速度，避免因幀率不同出現抖動）
             if (this.collecting) {
-                const dirX = dx / distance;
-                const dirY = dy / distance;
-                
-                this.x += dirX * this.collectionSpeed * frameMultiplier;
-                this.y += dirY * this.collectionSpeed * frameMultiplier;
-                
-                // 如果非常接近玩家，標記為已收集
-                if (distance < 10) {
+                // 如果距離非常小，直接標記為收集
+                if (distance < 6) {
                     this.collected = true;
+                } else {
+                    // 使用 deltaTime 為單位的移動量（collectionSpeed 為 px / sec）
+                    const moveDist = this.collectionSpeed * deltaTime;
+
+                    // 計算正規化方向
+                    const invDist = 1 / distance;
+                    const dirX = dx * invDist;
+                    const dirY = dy * invDist;
+
+                    // 若移動距離會超過目標，直接置於玩家位置並標記收集
+                    if (moveDist >= distance) {
+                        this.x = playerX;
+                        this.y = playerY;
+                        this.collected = true;
+                    } else {
+                        this.x += dirX * moveDist;
+                        this.y += dirY * moveDist;
+                    }
                 }
             }
         }
